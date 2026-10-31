@@ -113,7 +113,7 @@ function artifactSecurity() {
         imgSrc: ["'self'", 'data:', 'blob:'],
         fontSrc: ["'self'", 'data:'],
         mediaSrc: ["'self'"],
-        connectSrc: ["'none'"],
+        connectSrc: config.platform.csp === 'strict' ? ["'none'"] : ["'self'"],
         formAction: ["'none'"],
         objectSrc: ["'none'"],
         baseUri: ["'none'"],

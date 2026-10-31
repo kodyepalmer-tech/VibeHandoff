@@ -34,14 +34,30 @@ async function start() {
   if (role === 'portal' || role === 'all') {
     const portal = http.createServer(createPortalApp());
     await new Promise((resolve) => portal.listen(config.portalPort, resolve));
-    logger.info({ port: config.portalPort, origin: config.portalOrigin }, 'portal listening');
+    logger.info(
+      {
+        port: config.portalPort,
+        origin: config.portalOrigin,
+        mode: config.platformMode,
+        product: config.platform.productName,
+      },
+      'portal listening'
+    );
     servers.push(portal);
   }
 
   if (role === 'artifact' || role === 'all') {
     const artifacts = http.createServer(createArtifactApp());
     await new Promise((resolve) => artifacts.listen(config.artifactPort, resolve));
-    logger.info({ port: config.artifactPort, origin: config.artifactHostOrigin }, 'artifact host listening');
+    logger.info(
+      {
+        port: config.artifactPort,
+        origin: config.artifactHostOrigin,
+        mode: config.platformMode,
+        product: config.platform.productName,
+      },
+      'artifact host listening'
+    );
     servers.push(artifacts);
   }
 

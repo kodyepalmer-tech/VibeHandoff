@@ -34,7 +34,13 @@ function createArtifactApp() {
   app.get('/healthz', async (req, res) => {
     try {
       await storage.healthcheck();
-      res.json({ status: 'ok', role: 'artifact', origin: config.artifactHostOrigin });
+      res.json({
+        status: 'ok',
+        role: 'artifact',
+        mode: config.platformMode,
+        product: config.platform.productName,
+        origin: config.artifactHostOrigin,
+      });
     } catch (err) {
       res.status(503).json({ status: 'error', error: err.message });
     }

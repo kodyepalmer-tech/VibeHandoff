@@ -27,8 +27,11 @@ function required(name, value) {
   return value;
 }
 
+const { platformProfile } = require('./platform');
+
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isProduction = nodeEnv === 'production';
+const platform = platformProfile((process.env.PLATFORM_MODE || 'enterprise').toLowerCase());
 
 const config = {
   nodeEnv,
@@ -46,6 +49,8 @@ const config = {
   sessionSecret: process.env.SESSION_SECRET || 'dev-only-session-secret-change-me',
   sessionCookieName: process.env.SESSION_COOKIE_NAME || 'vh_session',
   sessionTtlSeconds: intEnv('SESSION_TTL_SECONDS', 60 * 60 * 12),
+  platformMode: platform.mode,
+  platform,
   authAdapter: (process.env.AUTH_ADAPTER || 'dev').toLowerCase(),
   organizationSlug: process.env.ORGANIZATION_SLUG || 'acme',
   organizationName: process.env.ORGANIZATION_NAME || 'Acme',
@@ -92,6 +97,21 @@ function assertProductionConfig() {
   required('ARTIFACT_HOST_ORIGIN', process.env.ARTIFACT_HOST_ORIGIN);
   if (config.portalOrigin === config.artifactHostOrigin) {
     throw new Error('PORTAL_ORIGIN and ARTIFACT_HOST_ORIGIN must be different origins');
+  }
+  if (config.platformMode === 'public') {
+    if (config.authAdapter !== 'oauth') {
+      throw new Error('AUTH_ADAPTER must be oauth in production when PLATFORM_MODE=public');
+    }
+    const providerIds = [
+      process.env.OAUTH_DISCORD_CLIENT_ID,
+      process.env.OAUTH_GOOGLE_CLIENT_ID,
+      process.env.OAUTH_GITHUB_CLIENT_ID,
+      process.env.OAUTH_APPLE_CLIENT_ID,
+    ];
+    if (!providerIds.some((value) => value)) {
+      throw new Error('At least one public OAuth provider client id is required');
+    }
+    return;
   }
   if (config.authAdapter !== 'oidc') {
     throw new Error('AUTH_ADAPTER must be oidc in production');

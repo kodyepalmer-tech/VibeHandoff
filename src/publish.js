@@ -142,7 +142,23 @@ async function ingestRelease({ user, application, version, zipBuffer }) {
 
   await assertCanPublish(user, application.id);
   const used = await userStorageBytes(user.id);
-  if (used + zipBuffer.length > config.limits.maxUserStorageBytes) {
+  const quota = await db.query(
+    `SELECT max_upload_bytes, max_member_storage_bytes
+     FROM organization_quotas WHERE organization_id = $1`,
+    [user.organization_id]
+  );
+  const uploadLimit = quota.rowCount
+    ? Math.min(config.limits.maxUploadBytes, Number(quota.rows[0].max_upload_bytes))
+    : config.limits.maxUploadBytes;
+  const storageLimit = quota.rowCount
+    ? Math.min(config.limits.maxUserStorageBytes, Number(quota.rows[0].max_member_storage_bytes))
+    : config.limits.maxUserStorageBytes;
+  if (zipBuffer.length > uploadLimit) {
+    const error = new Error('Upload exceeds the organization file limit');
+    error.status = 413;
+    throw error;
+  }
+  if (used + zipBuffer.length > storageLimit) {
     const error = new Error('Upload quota exceeded for this publisher');
     error.status = 413;
     throw error;

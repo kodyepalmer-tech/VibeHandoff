@@ -17,11 +17,17 @@ const auth = require('./auth');
 const security = require('./security');
 const { attachAdminRoutes } = require('./admin');
 const { attachRoomRoutes } = require('./rooms');
+const { mountPlatform } = require('./platform-router');
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: config.limits.maxUploadBytes, files: 1 },
 });
+
+function catalogOrganizationId(user) {
+  if (config.platform.catalog === 'public') return null;
+  return user.organization_id;
+}
 
 function sendError(res, err) {
   const status = err.status || (err.code === 'LIMIT_FILE_SIZE' ? 413 : 500);
@@ -54,6 +60,8 @@ function createPortalApp() {
       res.json({
         status: 'ok',
         role: 'portal',
+        mode: config.platformMode,
+        product: config.platform.productName,
         database,
         objectStorage,
         artifactHostOrigin: config.artifactHostOrigin,
@@ -66,7 +74,7 @@ function createPortalApp() {
   app.get('/api/apps', auth.requireAuth, async (req, res) => {
     try {
       const apps = await queries.listMarketplace({
-        organizationId: req.user.organization_id,
+        organizationId: catalogOrganizationId(req.user),
         q: req.query.q,
         tag: req.query.tag,
       });
@@ -78,7 +86,7 @@ function createPortalApp() {
 
   app.get('/api/tags', auth.requireAuth, async (req, res) => {
     try {
-      const tags = await queries.listTags(req.user.organization_id);
+      const tags = await queries.listTags(catalogOrganizationId(req.user));
       res.json({ tags });
     } catch (err) {
       sendError(res, err);
@@ -87,7 +95,7 @@ function createPortalApp() {
 
   app.get('/api/metrics', auth.requireAuth, async (req, res) => {
     try {
-      const metrics = await queries.marketplaceMetrics(req.user.organization_id);
+      const metrics = await queries.marketplaceMetrics(catalogOrganizationId(req.user));
       res.json({ metrics });
     } catch (err) {
       sendError(res, err);
@@ -97,7 +105,7 @@ function createPortalApp() {
   app.get('/api/apps/:slug', auth.requireAuth, async (req, res) => {
     try {
       const appRow = await queries.getMarketplaceApp({
-        organizationId: req.user.organization_id,
+        organizationId: catalogOrganizationId(req.user),
         slug: req.params.slug,
       });
       if (!appRow) {
@@ -274,11 +282,13 @@ function createPortalApp() {
 
   attachAdminRoutes(app);
   attachRoomRoutes(app, { requireAuth: auth.requireAuth });
+  // PLATFORM_MODE chooses reviews, export approval, quotas, and leaderboard scope.
+  mountPlatform(app);
 
   app.post('/api/apps/:slug/launch', auth.requireAuth, async (req, res) => {
     try {
       const appRow = await queries.getMarketplaceApp({
-        organizationId: req.user.organization_id,
+        organizationId: catalogOrganizationId(req.user),
         slug: req.params.slug,
       });
       if (!appRow) {
@@ -287,7 +297,7 @@ function createPortalApp() {
       }
       const release = await db.query(
         `SELECT * FROM releases WHERE id = $1 AND organization_id = $2 AND status = 'published'`,
-        [appRow.release_id, req.user.organization_id]
+        [appRow.release_id, appRow.organization_id]
       );
       if (!release.rowCount || !release.rows[0].immutable_prefix) {
         res.status(404).json({ error: 'Published artifact is not available' });
@@ -295,19 +305,19 @@ function createPortalApp() {
       }
       const ticket = issueLaunchTicket({
         userId: req.user.id,
-        organizationId: req.user.organization_id,
+        organizationId: appRow.organization_id,
         applicationId: appRow.id,
         releaseId: release.rows[0].id,
         prefix: release.rows[0].immutable_prefix,
       });
       await queries.recordLaunch({
-        organizationId: req.user.organization_id,
+        organizationId: appRow.organization_id,
         applicationId: appRow.id,
         releaseId: release.rows[0].id,
         userId: req.user.id,
       });
       await audit.record({
-        organizationId: req.user.organization_id,
+        organizationId: appRow.organization_id,
         userId: req.user.id,
         action: 'release.launch',
         resourceType: 'release',

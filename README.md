@@ -14,6 +14,23 @@ Uploads are static files only: HTML, CSS, JavaScript, and assets, with `index.ht
 
 A launch is served from a second origin. The iframe sandbox does not get `allow-same-origin`, and the artifact host does not accept the portal session. That keeps a published game from reading the company login or calling the portal API. Live rooms do not open that up: Snake can be played solo or with other people, and the portal relays the moves while the game stays in the sandbox.
 
+The same parent page is the only door for saved progress and high scores. A game posts `VIBE_SAVE_PROGRESS`, `VIBE_LOAD_PROGRESS`, or `VIBE_SUBMIT_SCORE`. The portal checks that the message came from the launch frame, then writes the signed-in player. The game does not choose which app the score belongs to.
+
+## One engine, two deployments
+
+`PLATFORM_MODE` chooses which product this process is.
+
+| | `enterprise` (default) | `public` |
+| --- | --- | --- |
+| Product | VibeHandoff, on the company network | VibeSteam, a public store |
+| Sign-in | Corporate OIDC. Production refuses anything else. | Public OAuth (Discord, Google, GitHub, or Apple). Production requires `AUTH_ADAPTER=oauth` and one client id. Those redirects are not connected yet. |
+| Catalog | Signed-in organization | Every published app on this deployment |
+| Reviews and profiles | Off | On |
+| Taking an asset out | An admin approves the request first | The creator’s request is recorded as approved |
+| Artifact browser policy | `connect-src 'none'` | `connect-src 'self'` |
+
+The company Compose file pins `PLATFORM_MODE=enterprise`. A public store is a different host and a different database. Publishing an internal project there means downloading the static package, clearing approval, and uploading it on that site like any other creator. Approval records the decision. It does not send the files.
+
 ## Run it locally
 
 Docker Compose is the supported local deploy. It starts Postgres, private object storage (SeaweedFS), the portal, the artifact host, and the demo catalog.
@@ -93,7 +110,8 @@ GitHub Actions runs that suite on every pull request and on every push to `main`
 ```
 src/            Portal, artifact host, auth, publishing, storage
 public/         Marketplace, studio, admin desk, launch frame
-migrations/     Postgres schema
+migrations/     Postgres schema, applied in order on startup
+schema.sql      Combined picture of that schema for a fresh database
 deploy/         Production Compose file and Caddy example
 fixtures/apps/  Demo static apps seeded locally
 docs/           Deployment runbook and launch checklist

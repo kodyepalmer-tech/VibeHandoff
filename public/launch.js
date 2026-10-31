@@ -62,7 +62,45 @@ async function boot() {
   window.addEventListener('message', (event) => {
     if (event.source !== frame.contentWindow) return;
     const data = event.data;
-    if (!data || data.channel !== 'vibehandoff' || !room) return;
+    if (!data || typeof data !== 'object') return;
+
+    // The sandboxed frame's origin is the opaque string "null", so the parent
+    // trusts event.source (this iframe) rather than a page-supplied origin.
+    // The slug comes from this page. A game-supplied gameId is ignored.
+    function reply(type, extra) {
+      const targetOrigin = event.origin && event.origin !== 'null' ? event.origin : '*';
+      event.source.postMessage({ type, requestId: data.requestId, ...extra }, targetOrigin);
+    }
+
+    if (data.type === 'VIBE_SAVE_PROGRESS' || data.type === 'VIBE_LOAD_PROGRESS') {
+      const payload = data.payload || {};
+      const key = payload.key;
+      if (data.type === 'VIBE_SAVE_PROGRESS') {
+        api('/api/user/save-state', {
+          method: 'POST',
+          body: { slug, key, data: payload.data },
+        })
+          .then(() => reply('VIBE_SAVE_SUCCESS'))
+          .catch((err) => reply('VIBE_SAVE_ERROR', { error: err.message }));
+        return;
+      }
+      const query = new URLSearchParams({ slug, key: String(key || '') });
+      api(`/api/user/save-state?${query}`)
+        .then((result) => reply('VIBE_LOAD_SUCCESS', { data: result.state ? result.state.data : null }))
+        .catch((err) => reply('VIBE_LOAD_ERROR', { error: err.message }));
+      return;
+    }
+
+    if (data.type === 'VIBE_SUBMIT_SCORE') {
+      const payload = data.payload || {};
+      api('/api/leaderboards/submit', {
+        method: 'POST',
+        body: { slug, score: payload.score },
+      }).catch(() => {});
+      return;
+    }
+
+    if (data.channel !== 'vibehandoff' || !room) return;
     if (data.type === 'hello') {
       hello();
       return;

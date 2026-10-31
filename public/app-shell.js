@@ -50,6 +50,25 @@
     }
   }
 
+  async function applyBrand() {
+    try {
+      const platform = await api('/api/platform');
+      document.querySelectorAll('[data-product]').forEach((node) => {
+        node.textContent = platform.productName;
+      });
+      document.querySelectorAll('[data-tagline]').forEach((node) => {
+        node.textContent = platform.tagline;
+      });
+      const heading = document.querySelector('h1');
+      const eyebrow = document.querySelector('main .eyebrow');
+      if (eyebrow && heading && heading.textContent.trim() === 'Sign in to the studio.') {
+        eyebrow.textContent = platform.productName;
+      }
+    } catch {
+      // The baked-in enterprise name stays if the platform route is down.
+    }
+  }
+
   function renderChrome(active) {
     const who = $('#who');
     if (who && state.user) {
@@ -66,6 +85,7 @@
     if (admin) {
       admin.hidden = state.user?.role !== 'admin';
     }
+    applyBrand();
   }
 
   async function logout() {
@@ -73,5 +93,5 @@
     location.href = '/login';
   }
 
-  window.VibeHandoff = { api, loadSession, renderChrome, logout, state, $ };
+  window.VibeHandoff = { api, loadSession, renderChrome, applyBrand, logout, state, $ };
 })();

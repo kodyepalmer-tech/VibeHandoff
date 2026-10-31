@@ -1,6 +1,7 @@
-const { api } = window.VibeHandoff;
+const { api, applyBrand } = window.VibeHandoff;
 
 async function boot() {
+  applyBrand();
   try {
     await api('/api/me');
     location.href = '/';
