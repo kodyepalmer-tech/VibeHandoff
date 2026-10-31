@@ -2,44 +2,63 @@
 
 const helmet = require('helmet');
 const config = require('./config');
+const db = require('./db');
 
-function createLimiter({ windowMs, max }) {
-  const hits = new Map();
-
-  function prune(now) {
-    for (const [key, bucket] of hits) {
-      if (now - bucket.start >= windowMs) hits.delete(key);
-    }
+async function consumeRateLimit(client, key, windowMs, max) {
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [key]);
+  const existing = await client.query(
+    'SELECT window_start, hit_count FROM rate_limit_buckets WHERE bucket_key = $1',
+    [key]
+  );
+  const now = Date.now();
+  if (!existing.rowCount || now - new Date(existing.rows[0].window_start).getTime() >= windowMs) {
+    await client.query(
+      `INSERT INTO rate_limit_buckets (bucket_key, window_start, hit_count)
+       VALUES ($1, now(), 1)
+       ON CONFLICT (bucket_key) DO UPDATE SET window_start = now(), hit_count = 1`,
+      [key]
+    );
+    return { allowed: true, remaining: max - 1, retryAfter: 0 };
   }
+  const count = existing.rows[0].hit_count + 1;
+  const start = new Date(existing.rows[0].window_start).getTime();
+  await client.query('UPDATE rate_limit_buckets SET hit_count = $2 WHERE bucket_key = $1', [key, count]);
+  if (count > max) {
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfter: Math.max(1, Math.ceil((windowMs - (now - start)) / 1000)),
+    };
+  }
+  return { allowed: true, remaining: Math.max(0, max - count), retryAfter: 0 };
+}
 
+function createLimiter({ windowMs, max, name }) {
   return function rateLimit(req, res, next) {
-    const now = Date.now();
-    if (hits.size > 5000) prune(now);
-    const key = `${req.ip}:${req.baseUrl || ''}${req.path}`;
-    const bucket = hits.get(key);
-    if (!bucket || now - bucket.start >= windowMs) {
-      hits.set(key, { start: now, count: 1 });
-      res.set('X-RateLimit-Remaining', String(max - 1));
-      next();
-      return;
-    }
-    bucket.count += 1;
-    if (bucket.count > max) {
-      res.set('Retry-After', String(Math.ceil((windowMs - (now - bucket.start)) / 1000)));
-      res.status(429).json({ error: 'Too many requests' });
-      return;
-    }
-    res.set('X-RateLimit-Remaining', String(Math.max(0, max - bucket.count)));
-    next();
+    const key = `${name}:${clientIp(req)}:${req.baseUrl || ''}${req.path}`;
+    db.withTransaction((client) => consumeRateLimit(client, key, windowMs, max))
+      .then((result) => {
+        if (!result.allowed) {
+          res.set('Retry-After', String(result.retryAfter));
+          res.set('X-RateLimit-Remaining', '0');
+          res.status(429).json({ error: 'Too many requests' });
+          return;
+        }
+        res.set('X-RateLimit-Remaining', String(result.remaining));
+        next();
+      })
+      .catch(next);
   };
 }
 
 const apiLimiter = createLimiter({
+  name: 'api',
   windowMs: config.limits.rateLimitWindowMs,
   max: config.limits.rateLimitMax,
 });
 
 const uploadLimiter = createLimiter({
+  name: 'upload',
   windowMs: config.limits.uploadRateLimitWindowMs,
   max: config.limits.uploadRateLimitMax,
 });
@@ -117,6 +136,7 @@ function clientIp(req) {
 
 module.exports = {
   createLimiter,
+  consumeRateLimit,
   apiLimiter,
   uploadLimiter,
   portalSecurity,

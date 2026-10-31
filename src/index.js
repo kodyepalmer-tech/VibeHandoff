@@ -8,10 +8,25 @@ const storage = require('./storage');
 const { createPortalApp } = require('./portal');
 const { createArtifactApp } = require('./artifact-host');
 
+async function waitForDependencies() {
+  let lastError;
+  for (let attempt = 1; attempt <= 15; attempt += 1) {
+    try {
+      await db.migrate();
+      await storage.ensureBucket();
+      return;
+    } catch (err) {
+      lastError = err;
+      logger.warn({ err: err.message, attempt }, 'waiting for postgres and object storage');
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+  throw lastError;
+}
+
 async function start() {
   db.getPool(config.databaseUrl);
-  await db.migrate();
-  await storage.ensureBucket();
+  await waitForDependencies();
 
   const servers = [];
   const role = config.appRole;

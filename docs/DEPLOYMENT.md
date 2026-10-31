@@ -24,7 +24,11 @@ Copy `.env.example` to `.env` and fill every production value from that single f
 - `PORTAL_ORIGIN` and `ARTIFACT_HOST_ORIGIN`
 - `SESSION_SECRET`
 
+`NODE_ENV=production` refuses to start unless `AUTH_ADAPTER=oidc`. The development login (`/api/dev/login`) is not mounted in that mode. The IdP role claim sets a person's role the first time they sign in (`admin`, `publisher`, or `member`; `owner` is treated as `admin`). Later sign-ins keep the role an admin set in the product.
+
 Optional claim mapping: `OIDC_ORG_CLAIM`, `OIDC_ROLE_CLAIM`, `OIDC_DISPLAY_NAME_CLAIM`. Missing org claims fall back to `ORGANIZATION_SLUG`.
+
+OIDC login transactions and rate-limit counters are stored in Postgres, so more than one portal process can serve login and enforce the same limits.
 
 Register this callback on the identity provider:
 
@@ -41,7 +45,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Compose starts Postgres, MinIO, the portal, the artifact host, and seeds Maya Chen (publisher) plus Jordan Lee (member) with three published demo apps. Open `http://localhost:3000` and use the development identities.
+Compose starts Postgres, SeaweedFS (private S3 on port 8333), the portal, the artifact host, and seeds Maya Chen (publisher), Jordan Lee (member), and Avery Quinn (admin) with three published demo apps. Open `http://localhost:3000` and use the development identities. `docker-compose.yml` keeps `NODE_ENV=development` unless you override it. A production override must set `AUTH_ADAPTER=oidc` and the OIDC variables or the portal will exit.
 
 Without Docker, install PostgreSQL and an S3-compatible endpoint, export the same `.env`, then:
 

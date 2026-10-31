@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "vibehandoff",
+      "credentials": [
+        {
+          "accessKey": "vibehandoff",
+          "secretKey": "vibehandoff-secret"
+        }
+      ],
+      "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+    }
+  ]
+}

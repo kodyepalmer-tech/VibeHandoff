@@ -15,6 +15,7 @@ const publish = require('./publish');
 const { issueLaunchTicket } = require('./tickets');
 const auth = require('./auth');
 const security = require('./security');
+const { attachAdminRoutes } = require('./admin');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -269,6 +270,8 @@ function createPortalApp() {
     }
   });
 
+  attachAdminRoutes(app);
+
   app.post('/api/apps/:slug/launch', auth.requireAuth, async (req, res) => {
     try {
       const appRow = await queries.getMarketplaceApp({
@@ -327,6 +330,7 @@ function createPortalApp() {
     '/': 'index.html',
     '/login': 'login.html',
     '/studio': 'studio.html',
+    '/admin': 'admin.html',
   };
 
   app.get(Object.keys(pages), (req, res) => {

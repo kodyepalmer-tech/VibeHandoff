@@ -14,6 +14,7 @@ function getPool(databaseUrl) {
     pool = new Pool({
       connectionString: defaultDatabaseUrl,
       max: 10,
+      connectionTimeoutMillis: 5_000,
     });
     pool.on('error', (err) => {
       logger.error({ err }, 'postgres pool error');
@@ -24,6 +25,10 @@ function getPool(databaseUrl) {
 
 function setPool(next) {
   pool = next;
+}
+
+function hasPool() {
+  return Boolean(pool);
 }
 
 async function closePool() {
@@ -88,6 +93,7 @@ async function healthcheck() {
 module.exports = {
   getPool,
   setPool,
+  hasPool,
   closePool,
   query,
   withTransaction,

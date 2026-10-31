@@ -15,7 +15,10 @@ Use this before inviting a pilot team onto VibeHandoff.
 
 - [ ] `PORTAL_ORIGIN` ≠ `ARTIFACT_HOST_ORIGIN`
 - [ ] OIDC login works against the real issuer (`AUTH_ADAPTER=oidc`)
-- [ ] Publisher/member roles are enforced on API routes
+- [ ] Production is running with `NODE_ENV=production` (the dev login is refused)
+- [ ] Publisher/member/admin roles are enforced on API routes
+- [ ] An admin can read the audit log, change a role, and pull another creator’s published app
+- [ ] A publisher cannot pull an app they do not own, and a member cannot open `/admin`
 - [ ] Artifact bucket has no public ACL
 - [ ] Direct artifact URLs 403/404 without a launch ticket
 - [ ] Launch iframe `sandbox` has no `allow-same-origin`

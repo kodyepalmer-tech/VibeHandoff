@@ -167,6 +167,89 @@ async function marketplaceMetrics(organizationId) {
   return result.rows[0];
 }
 
+async function listAuditLogs(organizationId, limit = 100) {
+  const capped = Math.min(Math.max(Number(limit) || 100, 1), 200);
+  const result = await db.query(
+    `SELECT audit_logs.id, audit_logs.action, audit_logs.resource_type, audit_logs.resource_id,
+            audit_logs.ip, audit_logs.metadata, audit_logs.created_at,
+            users.email AS actor_email, users.display_name AS actor_name
+     FROM audit_logs
+     LEFT JOIN users ON users.id = audit_logs.user_id
+     WHERE audit_logs.organization_id = $1
+     ORDER BY audit_logs.created_at DESC
+     LIMIT $2`,
+    [organizationId, capped]
+  );
+  return result.rows;
+}
+
+async function listOrgUsers(organizationId) {
+  const result = await db.query(
+    `SELECT id, email, display_name, role, last_login_at, created_at
+     FROM users
+     WHERE organization_id = $1
+     ORDER BY role, display_name`,
+    [organizationId]
+  );
+  return result.rows;
+}
+
+async function listOrgApps(organizationId) {
+  const result = await db.query(
+    `SELECT
+       applications.id,
+       applications.slug,
+       applications.name,
+       users.display_name AS creator_name,
+       published.id AS published_release_id,
+       published.version AS published_version
+     FROM applications
+     JOIN users ON users.id = applications.created_by
+     LEFT JOIN releases published
+       ON published.application_id = applications.id AND published.status = 'published'
+     WHERE applications.organization_id = $1
+     ORDER BY applications.name`,
+    [organizationId]
+  );
+  return result.rows;
+}
+
+async function setUserRole({ organizationId, userId, role }) {
+  const allowed = ['admin', 'publisher', 'member'];
+  if (!allowed.includes(role)) {
+    const error = new Error('Role must be admin, publisher, or member');
+    error.status = 400;
+    throw error;
+  }
+  return db.withTransaction(async (client) => {
+    const found = await client.query(
+      `SELECT id, role FROM users WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+      [userId, organizationId]
+    );
+    if (!found.rowCount) {
+      const error = new Error('User not found');
+      error.status = 404;
+      throw error;
+    }
+    if (found.rows[0].role === 'admin' && role !== 'admin') {
+      const admins = await client.query(
+        `SELECT COUNT(*)::int AS count FROM users WHERE organization_id = $1 AND role = 'admin'`,
+        [organizationId]
+      );
+      if (admins.rows[0].count <= 1) {
+        const error = new Error('The organization needs at least one admin');
+        error.status = 409;
+        throw error;
+      }
+    }
+    const updated = await client.query(
+      `UPDATE users SET role = $1 WHERE id = $2 RETURNING id, email, display_name, role`,
+      [role, userId]
+    );
+    return { previousRole: found.rows[0].role, user: updated.rows[0] };
+  });
+}
+
 module.exports = {
   listMarketplace,
   getMarketplaceApp,
@@ -176,4 +259,8 @@ module.exports = {
   recordLaunch,
   listTags,
   marketplaceMetrics,
+  listAuditLogs,
+  listOrgUsers,
+  listOrgApps,
+  setUserRole,
 };

@@ -64,8 +64,8 @@ const config = {
     endpoint: process.env.S3_ENDPOINT || '',
     region: process.env.S3_REGION || 'us-east-1',
     bucket: process.env.S3_BUCKET || 'vibehandoff-artifacts',
-    accessKey: process.env.S3_ACCESS_KEY || 'minio',
-    secretKey: process.env.S3_SECRET_KEY || 'minio-secret',
+    accessKey: process.env.S3_ACCESS_KEY || 'vibehandoff',
+    secretKey: process.env.S3_SECRET_KEY || 'vibehandoff-secret',
     forcePathStyle: boolEnv('S3_FORCE_PATH_STYLE', true),
   },
   limits: {
@@ -93,12 +93,13 @@ function assertProductionConfig() {
   if (config.portalOrigin === config.artifactHostOrigin) {
     throw new Error('PORTAL_ORIGIN and ARTIFACT_HOST_ORIGIN must be different origins');
   }
-  if (config.authAdapter === 'oidc') {
-    required('OIDC_ISSUER', process.env.OIDC_ISSUER);
-    required('OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID);
-    required('OIDC_CLIENT_SECRET', process.env.OIDC_CLIENT_SECRET);
-    required('OIDC_REDIRECT_URI', process.env.OIDC_REDIRECT_URI);
+  if (config.authAdapter !== 'oidc') {
+    throw new Error('AUTH_ADAPTER must be oidc in production');
   }
+  required('OIDC_ISSUER', process.env.OIDC_ISSUER);
+  required('OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID);
+  required('OIDC_CLIENT_SECRET', process.env.OIDC_CLIENT_SECRET);
+  required('OIDC_REDIRECT_URI', process.env.OIDC_REDIRECT_URI);
 }
 
 assertProductionConfig();

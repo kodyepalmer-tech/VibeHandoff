@@ -62,6 +62,10 @@
     if (studio) {
       studio.hidden = state.user?.role !== 'publisher';
     }
+    const admin = $('[data-nav="admin"]');
+    if (admin) {
+      admin.hidden = state.user?.role !== 'admin';
+    }
   }
 
   async function logout() {

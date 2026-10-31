@@ -278,8 +278,16 @@ async function publishRelease({ user, application, releaseId }) {
   });
 }
 
-async function unpublishRelease({ user, application, releaseId }) {
-  await assertCanPublish(user, application.id);
+async function unpublishRelease({ user, application, releaseId, bypassMembership = false }) {
+  if (bypassMembership) {
+    if (user.role !== 'admin' || application.organization_id !== user.organization_id) {
+      const error = new Error('Only an organization admin can pull this release');
+      error.status = 403;
+      throw error;
+    }
+  } else {
+    await assertCanPublish(user, application.id);
+  }
   const found = await db.query(
     `SELECT * FROM releases
      WHERE id = $1 AND application_id = $2 AND organization_id = $3`,

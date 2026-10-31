@@ -7,7 +7,6 @@ const db = require('./db');
 const audit = require('./audit');
 const { clientIp } = require('./security');
 
-const pendingOidc = new Map();
 let oidcClientPromise;
 
 function encodeSession(user) {
@@ -60,8 +59,33 @@ function clearSessionCookie(res) {
 
 function normalizeRole(value) {
   const role = String(value || '').toLowerCase();
-  if (role === 'publisher' || role === 'admin' || role === 'owner') return 'publisher';
+  if (role === 'admin' || role === 'owner') return 'admin';
+  if (role === 'publisher') return 'publisher';
   return 'member';
+}
+
+async function saveOidcTransaction({ state, nonce, codeVerifier }) {
+  await db.query(`DELETE FROM oidc_transactions WHERE created_at < now() - interval '10 minutes'`);
+  await db.query(
+    `INSERT INTO oidc_transactions (state, nonce, code_verifier) VALUES ($1, $2, $3)`,
+    [state, nonce, codeVerifier]
+  );
+}
+
+async function takeOidcTransaction(state) {
+  if (!state) return null;
+  const result = await db.query(
+    `DELETE FROM oidc_transactions
+     WHERE state = $1 AND created_at > now() - interval '10 minutes'
+     RETURNING nonce, code_verifier`,
+    [state]
+  );
+  return result.rows[0] || null;
+}
+
+function pruneOidcTransactions() {
+  if (!db.hasPool()) return Promise.resolve();
+  return db.query(`DELETE FROM oidc_transactions WHERE created_at < now() - interval '10 minutes'`);
 }
 
 async function ensureOrganization(client, slug, name) {
@@ -100,7 +124,14 @@ async function upsertUserFromIdentity(identity) {
          organization_id, oidc_issuer, oidc_subject, email, display_name, role, last_login_at
        ) VALUES ($1, $2, $3, $4, $5, $6, now())
        RETURNING *`,
-      [org.id, identity.issuer, identity.subject, identity.email, identity.displayName, identity.role]
+      [
+        org.id,
+        identity.issuer,
+        identity.subject,
+        identity.email,
+        identity.displayName,
+        normalizeRole(identity.role),
+      ]
     );
     return created.rows[0];
   });
@@ -190,7 +221,7 @@ function requireRole(...roles) {
       return;
     }
     if (!roles.includes(req.user.role)) {
-      res.status(403).json({ error: 'Publisher role required' });
+      res.status(403).json({ error: 'Insufficient role' });
       return;
     }
     next();
@@ -209,7 +240,7 @@ function attachAuthRoutes(app) {
       const nonce = generators.nonce();
       const codeVerifier = generators.codeVerifier();
       const codeChallenge = generators.codeChallenge(codeVerifier);
-      pendingOidc.set(state, { nonce, codeVerifier, createdAt: Date.now() });
+      await saveOidcTransaction({ state, nonce, codeVerifier });
       const url = client.authorizationUrl({
         scope: config.oidc.scopes,
         state,
@@ -231,8 +262,7 @@ function attachAuthRoutes(app) {
       }
       const client = await getOidcClient();
       const params = client.callbackParams(req);
-      const pending = pendingOidc.get(params.state);
-      pendingOidc.delete(params.state);
+      const pending = await takeOidcTransaction(params.state);
       if (!pending) {
         res.status(400).send('OIDC state is invalid or expired');
         return;
@@ -240,7 +270,7 @@ function attachAuthRoutes(app) {
       const tokenSet = await client.callback(config.oidc.redirectUri, params, {
         state: params.state,
         nonce: pending.nonce,
-        code_verifier: pending.codeVerifier,
+        code_verifier: pending.code_verifier,
       });
       const claims = tokenSet.claims();
       const identity = claimsToIdentity(claims, config.oidc.issuer);
@@ -343,14 +373,9 @@ function attachAuthRoutes(app) {
   }
 }
 
-function prunePendingOidc() {
-  const cutoff = Date.now() - 10 * 60 * 1000;
-  for (const [state, value] of pendingOidc) {
-    if (value.createdAt < cutoff) pendingOidc.delete(state);
-  }
-}
-
-setInterval(prunePendingOidc, 60_000).unref();
+setInterval(() => {
+  pruneOidcTransactions().catch(() => {});
+}, 60_000).unref();
 
 module.exports = {
   encodeSession,
@@ -365,4 +390,6 @@ module.exports = {
   requireRole,
   attachAuthRoutes,
   normalizeRole,
+  saveOidcTransaction,
+  takeOidcTransaction,
 };

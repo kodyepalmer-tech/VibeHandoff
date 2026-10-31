@@ -44,6 +44,16 @@ async function seed() {
     organizationName: config.organizationName,
   });
 
+  const avery = await auth.upsertUserFromIdentity({
+    issuer: 'https://id.vibehandoff.dev',
+    subject: 'avery',
+    email: 'avery@acme.example',
+    displayName: 'Avery Quinn',
+    role: 'admin',
+    organizationSlug: config.organizationSlug,
+    organizationName: config.organizationName,
+  });
+
   const apps = [
     {
       name: 'Orbit Sketch',
@@ -109,7 +119,10 @@ async function seed() {
     });
   }
 
-  logger.info({ maya: maya.email, jordan: jordan.email }, 'seeded demo identities and published apps');
+  logger.info(
+    { maya: maya.email, jordan: jordan.email, avery: avery.email },
+    'seeded demo identities and published apps'
+  );
 }
 
 if (require.main === module) {

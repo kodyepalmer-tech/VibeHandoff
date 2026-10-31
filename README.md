@@ -10,8 +10,9 @@ This repository is the production-shaped Express/JavaScript vertical slice: a ma
 - S3-compatible object storage with quarantine uploads and promotion to immutable release objects
 - Static-only ZIP validation, release history, publish/unpublish, and duplicate-version protection
 - Marketplace search/filter, app detail, creator dashboard, and isolated iframe launch
-- Generic OIDC adapter (plus a development identity adapter for local staging)
-- Organization scoping, publisher/member roles, rate limits, upload quotas, and security headers
+- Generic OIDC adapter. Production refuses the development login. Local staging still uses seeded identities.
+- Organization scoping, admin/publisher/member roles, shared rate limits, upload quotas, and security headers
+- Admin desk for the audit log, role changes, and pulling a published app
 - Docker Compose staging, CI for tests/syntax/audit, and a launch checklist
 
 ## Quick start
@@ -31,8 +32,9 @@ Open `http://localhost:3000`. Local staging uses the seeded identities:
 | --- | --- | --- |
 | Maya Chen | maya@acme.example | publisher |
 | Jordan Lee | jordan@acme.example | member |
+| Avery Quinn | avery@acme.example | admin |
 
-Maya owns the demo apps. Jordan can search the marketplace and launch them.
+Maya owns the demo apps. Jordan can search the marketplace and launch them. Avery can read the audit log, change roles, and pull a published app.
 
 ## Tests and CI
 
