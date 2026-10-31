@@ -3,8 +3,16 @@
 const http = require('http');
 const { URL } = require('url');
 
+function escapeXml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function createS3Mock() {
   const buckets = new Map();
+  const puts = [];
 
   function bucketMap(name) {
     if (!buckets.has(name)) buckets.set(name, new Map());
@@ -18,6 +26,7 @@ function createS3Mock() {
   }
 
   const server = http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://127.0.0.1');
     const { bucket, key } = parse(req);
     if (!bucket) {
       res.writeHead(400);
@@ -39,6 +48,30 @@ function createS3Mock() {
     }
 
     const objects = bucketMap(bucket);
+
+    if (req.method === 'GET' && !key && url.searchParams.get('list-type') === '2') {
+      const prefix = url.searchParams.get('prefix') || '';
+      const keys = [...objects.keys()].filter((name) => name.startsWith(prefix));
+      const contents = keys
+        .map(
+          (name) =>
+            `<Contents><Key>${escapeXml(name)}</Key><Size>${objects.get(name).body.length}</Size></Contents>`
+        )
+        .join('');
+      res.writeHead(200, { 'Content-Type': 'application/xml' });
+      res.end(
+        `<?xml version="1.0" encoding="UTF-8"?>` +
+          `<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">` +
+          `<Name>${escapeXml(bucket)}</Name>` +
+          `<Prefix>${escapeXml(prefix)}</Prefix>` +
+          `<KeyCount>${keys.length}</KeyCount>` +
+          `<MaxKeys>1000</MaxKeys>` +
+          `<IsTruncated>false</IsTruncated>` +
+          contents +
+          `</ListBucketResult>`
+      );
+      return;
+    }
 
     if (req.method === 'HEAD' && key) {
       res.writeHead(objects.has(key) ? 200 : 404);
@@ -73,7 +106,10 @@ function createS3Mock() {
           body: Buffer.concat(chunks),
           contentType: req.headers['content-type'] || 'application/octet-stream',
         });
-        res.writeHead(200);
+        const encryption = req.headers['x-amz-server-side-encryption'] || null;
+        puts.push({ key, encryption });
+        const headers = encryption ? { 'x-amz-server-side-encryption': encryption } : undefined;
+        res.writeHead(200, headers);
         res.end();
       });
       return;
@@ -85,6 +121,7 @@ function createS3Mock() {
 
   return {
     server,
+    puts,
     listen(port = 0) {
       return new Promise((resolve) => {
         server.listen(port, '127.0.0.1', () => {

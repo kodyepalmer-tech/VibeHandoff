@@ -59,10 +59,16 @@ function createArtifactApp() {
     }
     const key = storage.immutableObjectKey(verified.claims.prefix, relative);
     try {
+      // Enterprise reads the bucket with a short-lived signed URL and still
+      // returns the bytes from this origin. The browser never sees the bucket.
       const object = await storage.getObject(key);
       const contentType = mime.lookup(relative) || object.contentType || 'application/octet-stream';
       res.set('Content-Type', contentType);
       res.set('X-Content-Type-Options', 'nosniff');
+      res.set('X-Vibe-Storage', storage.accessMode());
+      if (config.platformMode === 'public') {
+        res.set('Cache-Control', 'public, max-age=300');
+      }
       res.send(object.body);
     } catch (err) {
       if (err.$metadata?.httpStatusCode === 404 || err.name === 'NoSuchKey' || err.Code === 'NoSuchKey') {

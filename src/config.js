@@ -28,10 +28,16 @@ function required(name, value) {
 }
 
 const { platformProfile } = require('./platform');
+const { storageProfile } = require('./storage-profile');
 
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isProduction = nodeEnv === 'production';
 const platform = platformProfile((process.env.PLATFORM_MODE || 'enterprise').toLowerCase());
+const objects = storageProfile(platform.mode, {
+  publicBaseUrl: process.env.S3_PUBLIC_BASE_URL || '',
+  signedUrlTtlSeconds: intEnv('S3_SIGNED_URL_TTL_SECONDS', 120),
+  sse: process.env.S3_SSE === undefined || process.env.S3_SSE === '' ? undefined : boolEnv('S3_SSE', true),
+});
 
 const config = {
   nodeEnv,
@@ -72,6 +78,7 @@ const config = {
     accessKey: process.env.S3_ACCESS_KEY || 'vibehandoff',
     secretKey: process.env.S3_SECRET_KEY || 'vibehandoff-secret',
     forcePathStyle: boolEnv('S3_FORCE_PATH_STYLE', true),
+    profile: objects,
   },
   limits: {
     maxUploadBytes: intEnv('MAX_UPLOAD_BYTES', 15 * 1024 * 1024),

@@ -7,6 +7,7 @@ const audit = require('./audit');
 const queries = require('./queries');
 const publish = require('./publish');
 const { clientIp } = require('./security');
+const { buildExportArchive } = require('./export-download');
 
 const SAVE_KEY = /^[A-Za-z0-9_.:-]{1,64}$/;
 const HANDLE = /^[a-z0-9_]{3,24}$/;
@@ -291,6 +292,27 @@ function mountPlatform(app) {
     app.post('/api/apps/:slug/reviews', reviewsOff);
     app.patch('/api/me/profile', reject('Public profiles are part of the public store.'));
   }
+
+  app.get('/api/apps/:slug/export/download', auth.requireAuth, async (req, res, next) => {
+    try {
+      const archive = await buildExportArchive({ user: req.user, slug: req.params.slug });
+      await audit.record({
+        organizationId: req.user.organization_id,
+        userId: req.user.id,
+        action: 'export.download',
+        resourceType: 'export',
+        resourceId: archive.exportId,
+        ip: clientIp(req),
+        metadata: { slug: req.params.slug, releaseId: archive.releaseId },
+      });
+      res.set('Content-Type', 'application/zip');
+      res.set('Content-Disposition', `attachment; filename="${archive.filename}"`);
+      res.set('Cache-Control', 'no-store');
+      res.send(archive.body);
+    } catch (err) {
+      next(err);
+    }
+  });
 
   app.post('/api/apps/:slug/exports', auth.requireRole('publisher'), async (req, res, next) => {
     try {

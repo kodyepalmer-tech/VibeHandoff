@@ -258,3 +258,18 @@ CREATE TABLE asset_export_requests (
 
 CREATE INDEX asset_export_requests_org_idx
   ON asset_export_requests (organization_id, status, created_at DESC);
+
+-- Same rows as asset_export_requests. Download checks this name for status = approved.
+CREATE OR REPLACE VIEW export_approvals AS
+SELECT
+  id,
+  organization_id,
+  application_id,
+  release_id,
+  requested_by,
+  reviewed_by,
+  status,
+  note,
+  created_at,
+  reviewed_at
+FROM asset_export_requests;

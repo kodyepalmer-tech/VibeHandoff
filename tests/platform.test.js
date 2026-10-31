@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
 const { platformProfile } = require('../src/platform');
+const { storageProfile, publicObjectUrl, exportDownloadDecision } = require('../src/storage-profile');
 const { startHarness } = require('./helpers/harness');
 
 const root = path.join(__dirname, '..');
@@ -52,6 +53,69 @@ test('platform profiles keep the two products apart', () => {
   assert.equal(pub.csp, 'standard');
   assert.equal(platformProfile().mode, 'enterprise');
   assert.throws(() => platformProfile('both'), /PLATFORM_MODE must be enterprise or public/);
+});
+
+test('storage keeps enterprise objects private and public objects on a CDN', () => {
+  const enterprise = storageProfile('enterprise');
+  assert.equal(enterprise.encryption, 'AES256');
+  assert.equal(enterprise.serve, 'signed-url');
+  assert.equal(enterprise.distribution, 'private');
+  assert.equal(publicObjectUrl(enterprise, 'releases/a/index.html'), null);
+  assert.equal(storageProfile('enterprise', { sse: false }).encryption, null);
+
+  const pub = storageProfile('public', { publicBaseUrl: 'https://cdn.example.com/' });
+  assert.equal(pub.encryption, null);
+  assert.equal(pub.serve, 'cdn');
+  assert.equal(pub.distribution, 'cdn');
+  assert.equal(
+    publicObjectUrl(pub, 'releases/a/index.html'),
+    'https://cdn.example.com/releases/a/index.html'
+  );
+
+  assert.equal(
+    exportDownloadDecision({
+      mode: 'enterprise',
+      sameOrganization: true,
+      isCreator: true,
+      approved: false,
+    }).status,
+    403
+  );
+  assert.equal(
+    exportDownloadDecision({
+      mode: 'enterprise',
+      sameOrganization: false,
+      isCreator: true,
+      approved: true,
+    }).ok,
+    false
+  );
+  assert.equal(
+    exportDownloadDecision({
+      mode: 'enterprise',
+      sameOrganization: true,
+      isCreator: false,
+      approved: true,
+    }).ok,
+    true
+  );
+  const bypass = exportDownloadDecision({
+    mode: 'public',
+    sameOrganization: true,
+    isCreator: true,
+    approved: false,
+  });
+  assert.equal(bypass.ok, true);
+  assert.equal(bypass.autoApprove, true);
+  assert.equal(
+    exportDownloadDecision({
+      mode: 'public',
+      sameOrganization: true,
+      isCreator: false,
+      approved: true,
+    }).status,
+    403
+  );
 });
 
 test('enterprise production still requires corporate OIDC', () => {
@@ -120,6 +184,28 @@ test('public artifact pages can only connect to themselves', () => {
   assert.doesNotMatch(result.stdout, /connect-src 'none'/);
 });
 
+function readZip(res, callback) {
+  const chunks = [];
+  res.on('data', (chunk) => chunks.push(chunk));
+  res.on('end', () => callback(null, Buffer.concat(chunks)));
+}
+
+async function zipNames(buffer) {
+  const yauzl = require('yauzl');
+  const zip = await yauzl.fromBufferPromise(buffer, { lazyEntries: true });
+  const names = [];
+  await new Promise((resolve, reject) => {
+    zip.on('entry', (entry) => {
+      names.push(entry.fileName);
+      zip.readEntry();
+    });
+    zip.on('end', resolve);
+    zip.on('error', reject);
+    zip.readEntry();
+  });
+  return names;
+}
+
 let harness;
 
 before(async () => {
@@ -185,6 +271,9 @@ test('enterprise mode saves progress, keeps the best score, and gates reviews an
   assert.equal(requested.status, 201);
   assert.equal(requested.body.export.status, 'pending');
   assert.match(requested.body.transfer, /Nothing is copied/);
+  const blockedDownload = await maya.get('/api/apps/snake/export/download');
+  assert.equal(blockedDownload.status, 403);
+  assert.match(blockedDownload.body.error, /admin has to approve/);
   const memberDecision = await jordan
     .post(`/api/admin/exports/${requested.body.export.id}/decision`)
     .send({ decision: 'approved' });
@@ -205,6 +294,15 @@ test('enterprise mode saves progress, keeps the best score, and gates reviews an
     .post(`/api/admin/exports/${requested.body.export.id}/decision`)
     .send({ decision: 'denied' });
   assert.equal(again.status, 404);
+
+  assert.ok(harness.s3.puts.some((put) => put.encryption === 'AES256'));
+  const downloaded = await maya.get('/api/apps/snake/export/download').buffer(true).parse(readZip);
+  assert.equal(downloaded.status, 200);
+  assert.match(downloaded.headers['content-type'], /application\/zip/);
+  assert.match(downloaded.headers['content-disposition'], /attachment; filename="snake-/);
+  assert.ok((await zipNames(downloaded.body)).includes('index.html'));
+  const jordanDownload = await jordan.get('/api/apps/snake/export/download').buffer(true).parse(readZip);
+  assert.equal(jordanDownload.status, 200);
 
   const publisherQuota = await maya.put('/api/admin/quota').send({
     maxUploadBytes: 1024,

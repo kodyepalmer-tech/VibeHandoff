@@ -29,7 +29,9 @@ The same parent page is the only door for saved progress and high scores. A game
 | Taking an asset out | An admin approves the request first | The creator’s request is recorded as approved |
 | Artifact browser policy | `connect-src 'none'` | `connect-src 'self'` |
 
-The company Compose file pins `PLATFORM_MODE=enterprise`. A public store is a different host and a different database. Publishing an internal project there means downloading the static package, clearing approval, and uploading it on that site like any other creator. Approval records the decision. It does not send the files.
+The company Compose file pins `PLATFORM_MODE=enterprise`. A public store is a different host and a different database. Publishing an internal project there means downloading the static package, clearing approval, and uploading it on that site like any other creator.
+
+Enterprise uploads ask the bucket for AES-256. A launched file is still served by the artifact host; that host reads the object with a short-lived signed URL, and the browser does not get a public object link. `GET /api/apps/:slug/export/download` returns a zip only after an admin has approved that export, and only for someone in the same organization. Public mode addresses objects with `S3_PUBLIC_BASE_URL` when that CDN is set, and the creator can download the zip without an admin. Local Compose points at SeaweedFS and sets `S3_SSE=false` because that stand-in does not apply SSE-S3. A real bucket should leave `S3_SSE` unset.
 
 ## Run it locally
 
