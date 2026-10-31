@@ -12,7 +12,7 @@ Your company is full of builders. VibeHandoff is the internal shelf where their 
 
 Uploads are static files only: HTML, CSS, JavaScript, and assets, with `index.html` at the root. Server code, build manifests, and executables are rejected. Nothing is built or executed on the platform.
 
-A launch is served from a second origin. The iframe sandbox does not get `allow-same-origin`, and the artifact host does not accept the portal session.
+A launch is served from a second origin. The iframe sandbox does not get `allow-same-origin`, and the artifact host does not accept the portal session. That keeps a published game from reading the company login or calling the portal API. Live rooms do not open that up: Snake can be played solo or with other people, and the portal relays the moves while the game stays in the sandbox.
 
 ## Run it locally
 
@@ -30,7 +30,7 @@ Open [http://localhost:3000](http://localhost:3000) and sign in as one of the se
 | Jordan Lee | jordan@acme.example | member |
 | Avery Quinn | avery@acme.example | admin |
 
-Maya owns Orbit Sketch, Standup Timer, and Pulse Board. Jordan can find those apps and launch them. Avery’s Admin desk can change a role or pull a release off the shelf.
+Maya owns Orbit Sketch, Standup Timer, Pulse Board, and Snake. Jordan can find those apps and launch them. Snake can be a solo round or a live room. Avery’s Admin desk can change a role or pull a release off the shelf.
 
 The portal listens on port 3000. Launched apps load from port 3001. Leave `NODE_ENV=development` for this stack. Production mode refuses the development login.
 

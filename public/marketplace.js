@@ -4,7 +4,7 @@ function card(app) {
   const tags = (app.tags || []).map((tag) => `<span class="tag">${tag.name}</span>`).join('');
   return `
     <a class="card" href="/apps/${encodeURIComponent(app.slug)}">
-      <div class="tags">${tags}</div>
+      <div class="tags">${tags}${app.multiplayer ? '<span class="tag">Live</span>' : ''}</div>
       <h3>${escapeHtml(app.name)}</h3>
       <p class="meta">${escapeHtml(app.description || 'No description yet.')}</p>
       <p class="meta">v${escapeHtml(app.version)} · ${escapeHtml(app.creator_name)} · ${app.launch_count} launches</p>

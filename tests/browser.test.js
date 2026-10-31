@@ -104,3 +104,49 @@ test('browser: admin reviews the audit log and pulls a published app', async (t)
   const hidden = await maya.get('/api/apps/lantern');
   assert.equal(hidden.status, 404);
 });
+
+test('browser: two people join the same live snake room', async (t) => {
+  let chromium;
+  try {
+    ({ chromium } = require('playwright'));
+  } catch {
+    t.skip('playwright is not installed');
+    return;
+  }
+  if (!browser) {
+    try {
+      browser = await chromium.launch({ headless: true });
+    } catch {
+      t.skip('playwright browser binaries are not installed');
+      return;
+    }
+  }
+
+  const host = await browser.newPage();
+  const guest = await browser.newPage();
+  await host.goto('http://127.0.0.1:13000/login');
+  await host.locator('button[data-email="maya@acme.example"]').click();
+  await host.waitForURL('http://127.0.0.1:13000/');
+  await host.goto('http://127.0.0.1:13000/apps/snake');
+  await host.getByRole('button', { name: 'Start a live game' }).click();
+  await host.waitForURL(/mode=multi/);
+  await host.waitForFunction(() => (document.querySelector('#room-code')?.textContent || '').trim().length === 4);
+  const code = (await host.locator('#room-code').innerText()).trim();
+  assert.match(code, /^[A-Z2-9]{4}$/);
+
+  await guest.goto('http://127.0.0.1:13000/login');
+  await guest.locator('button[data-email="jordan@acme.example"]').click();
+  await guest.waitForURL('http://127.0.0.1:13000/');
+  await guest.goto(`http://127.0.0.1:13000/apps/snake/launch?mode=multi&room=${code}`);
+  await guest.locator('#room-code').waitFor();
+
+  await host.frameLocator('#frame').getByText('Jordan Lee').waitFor({ timeout: 10_000 });
+  await guest.frameLocator('#frame').getByText('Maya Chen').waitFor({ timeout: 10_000 });
+  await host.waitForTimeout(700);
+  const live = await host.frameLocator('#frame').locator('#status').innerText();
+  assert.equal(live.includes('every snake is out'), false);
+  const sandbox = await host.locator('#frame').getAttribute('sandbox');
+  assert.equal(sandbox.includes('allow-same-origin'), false);
+  await host.close();
+  await guest.close();
+});

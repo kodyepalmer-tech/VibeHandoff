@@ -10,6 +10,7 @@ const marketplaceSelect = `
     applications.description,
     applications.created_at,
     applications.updated_at,
+    applications.multiplayer,
     users.display_name AS creator_name,
     users.email AS creator_email,
     releases.id AS release_id,

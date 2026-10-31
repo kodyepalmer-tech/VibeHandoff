@@ -264,6 +264,13 @@ th, td {
 .error { color: var(--clay); }
 .empty { padding: 28px; color: var(--muted); }
 
+.check { display: flex; align-items: center; gap: 8px; }
+.check input { min-height: 0; }
+
+.play-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.play-actions input { width: 8rem; min-height: 42px; }
+.room-code { font-family: var(--mono); letter-spacing: 0.12em; }
+
 .identities { display: grid; gap: 12px; }
 
 .identity {

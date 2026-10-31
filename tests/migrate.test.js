@@ -18,7 +18,7 @@ test('two startups apply each migration once', async () => {
   const applied = await pool.query('SELECT id FROM schema_migrations ORDER BY id');
   assert.deepEqual(
     applied.rows.map((row) => row.id),
-    ['001_init.sql', '002_admin_and_shared_state.sql']
+    ['001_init.sql', '002_admin_and_shared_state.sql', '003_live_rooms.sql']
   );
   const apps = await pool.query(
     "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'applications'"
@@ -27,6 +27,6 @@ test('two startups apply each migration once', async () => {
 
   await db.migrate();
   const again = await pool.query('SELECT count(*)::int AS n FROM schema_migrations');
-  assert.equal(again.rows[0].n, 2);
+  assert.equal(again.rows[0].n, 3);
   await db.closePool();
 });

@@ -16,6 +16,7 @@ const { issueLaunchTicket } = require('./tickets');
 const auth = require('./auth');
 const security = require('./security');
 const { attachAdminRoutes } = require('./admin');
+const { attachRoomRoutes } = require('./rooms');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -117,6 +118,7 @@ function createPortalApp() {
         slug: req.body.slug,
         description: req.body.description,
         tags: req.body.tags,
+        multiplayer: req.body.multiplayer,
       });
       await audit.record({
         organizationId: req.user.organization_id,
@@ -271,6 +273,7 @@ function createPortalApp() {
   });
 
   attachAdminRoutes(app);
+  attachRoomRoutes(app, { requireAuth: auth.requireAuth });
 
   app.post('/api/apps/:slug/launch', auth.requireAuth, async (req, res) => {
     try {
