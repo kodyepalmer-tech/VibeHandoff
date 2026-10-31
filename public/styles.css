@@ -264,31 +264,6 @@ th, td {
 .error { color: var(--clay); }
 .empty { padding: 28px; color: var(--muted); }
 
-.roles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin: 8px 0 22px;
-}
-
-.roles article {
-  background: rgba(255, 250, 242, 0.72);
-  border: 1px solid var(--rule);
-  border-radius: 18px;
-  padding: 14px 16px;
-}
-
-.roles h2 {
-  margin: 0 0 6px;
-  font-family: var(--serif);
-  font-size: 1.15rem;
-}
-
-.roles p {
-  margin: 0;
-  color: var(--muted);
-}
-
 .identities { display: grid; gap: 12px; }
 
 .identity {
@@ -299,7 +274,7 @@ th, td {
 }
 
 @media (max-width: 820px) {
-  .hero, .split, .roles { grid-template-columns: 1fr; }
+  .hero, .split { grid-template-columns: 1fr; }
   .metrics { grid-template-columns: 1fr; }
   .topbar { flex-wrap: wrap; }
 }
