@@ -1,21 +1,22 @@
-MIT License
+# Business Source License 1.1
 
-Copyright (c) 2026 KodyPalmer
+Parameters:
+* Licensor: Kody Palmer
+* Licensed Work: The software programs and code contained within this repository, including all components of the Vibe engine (VibeSteam and VibeHandoff modes).
+* Change License: Apache License, Version 2.0
+* Change Date: October 30, 2030
+* Additional Use Grant: You may use the Licensed Work for any non-commercial purposes, including personal deployment, development, testing, and running public, non-monetized hobbyist applications (the "VibeSteam Public Core"). 
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+---
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+## Terms of the License
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+The Licensor hereby grants you the right to copy, modify, create derivative works of, redistribute, and make the Licensed Work available, provided that your use of the Licensed Work always complies with the Additional Use Grant outlined above.
+
+Any use of the Licensed Work that violates the Additional Use Grant (including, but not limited to, deploying the software in "PLATFORM_MODE=enterprise", utilizing the software for internal corporate tool hosting, charging for access to instances of the platform, or using it as a multi-tenant commercial SaaS engine) is strictly prohibited without a separate, explicit commercial license purchased from the Licensor.
+
+Effective on the Change Date specified above, the Licensor hereby grants you a permanent, worldwide, royalty-free, non-exclusive, irrevocable license to use, reproduce, modify, display, perform, sublicense, and distribute the Licensed Work under the terms of the Change License.
+
+All copies of this software must retain this copyright notice and license text in full.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
