@@ -1,6 +1,6 @@
-# VibeHandoff deployment runbook
+# Vibe Handoff Enterprise deployment runbook
 
-VibeHandoff is an Express/JavaScript internal app store. Production needs four things: PostgreSQL, S3-compatible object storage, an OIDC provider, and a second origin for untrusted artifacts.
+Vibe Handoff Enterprise is an Express/JavaScript internal app store. The public site is VibeHandoff, on a separate host. Production needs four things: PostgreSQL, S3-compatible object storage, an OIDC provider, and a second origin for untrusted artifacts.
 
 ## Topology
 
@@ -61,13 +61,21 @@ npm start
 1. Provision Postgres 16+ and a private S3-compatible bucket.
 2. Provision two HTTPS hostnames (portal + artifact).
 3. Create an OIDC confidential client with authorization-code + PKCE.
-4. Set `NODE_ENV=production` and `AUTH_ADAPTER=oidc`.
-5. Build and run the image twice (`APP_ROLE=portal` and `APP_ROLE=artifact`).
-6. Run `node scripts/seed.js` only if you want the demo catalog. Skip seed in a real tenant.
+4. Copy `.env.example` to `.env`. Set `NODE_ENV=production`, `AUTH_ADAPTER=oidc`, both origins, the database URL, the bucket, and the OIDC client. Point `DATABASE_URL` and `S3_ENDPOINT` at those external services, not at the local Compose hostnames.
+5. Build the image and start only the two app processes:
+
+```bash
+docker build -t vibehandoff:local .
+docker compose -f deploy/docker-compose.production.yml up -d
+```
+
+Both processes apply migrations on startup. They take the same Postgres advisory lock, so a clean database is safe when portal and artifact host boot together. The image runs as the `node` user, and its health check uses port 3000 for the portal and `ARTIFACT_PORT` for the artifact role.
+
+6. Skip `npm run seed` for a real organization. Seed is the local demo catalog (Maya, Jordan, and Avery).
 7. Confirm `/healthz` on both processes.
 8. Publish a static ZIP from a publisher identity, then launch it from a member identity.
 
-Put a reverse proxy in front of both origins. Do not share cookies across hosts. Do not place the portal’s identity-aware proxy in front of the artifact host; launch tickets are the only access path.
+Put a reverse proxy in front of both origins. [`deploy/Caddyfile`](../deploy/Caddyfile) is a two-host example. Do not share cookies across hosts. Do not place the portal’s identity-aware proxy in front of the artifact host; launch tickets are the only access path.
 
 ## Health and operations
 

@@ -79,6 +79,15 @@ async function seed() {
       version: '1.0.1',
       files: readApp('pulse-board'),
     },
+    {
+      name: 'Snake',
+      slug: 'snake',
+      description: 'A classic snake. Play a round alone, or start a live room and let someone in your organization join.',
+      tags: ['game', 'live'],
+      version: '1.0.2',
+      multiplayer: true,
+      files: readApp('snake'),
+    },
   ];
 
   for (const spec of apps) {
@@ -86,7 +95,7 @@ async function seed() {
       'SELECT * FROM applications WHERE organization_id = $1 AND slug = $2',
       [maya.organization_id, spec.slug]
     );
-    const application = existing.rowCount
+    let application = existing.rowCount
       ? existing.rows[0]
       : (await publish.createApplication({
           user: maya,
@@ -94,7 +103,15 @@ async function seed() {
           slug: spec.slug,
           description: spec.description,
           tags: spec.tags,
+          multiplayer: Boolean(spec.multiplayer),
         }));
+    if (existing.rowCount && spec.multiplayer && !application.multiplayer) {
+      const updated = await db.query(
+        'UPDATE applications SET multiplayer = true WHERE id = $1 RETURNING *',
+        [application.id]
+      );
+      application = updated.rows[0];
+    }
 
     const releaseExists = await db.query(
       'SELECT 1 FROM releases WHERE application_id = $1 AND version = $2',

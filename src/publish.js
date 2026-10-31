@@ -76,7 +76,7 @@ async function replaceAppTags(client, applicationId, organizationId, tagNames) {
   return tags;
 }
 
-async function createApplication({ user, name, slug, description, tags }) {
+async function createApplication({ user, name, slug, description, tags, multiplayer = false }) {
   const normalizedSlug = normalizeSlug(slug || name);
   if (!normalizedSlug || !SLUG_PATTERN.test(normalizedSlug)) {
     const error = new Error('Choose a URL-safe slug');
@@ -92,10 +92,17 @@ async function createApplication({ user, name, slug, description, tags }) {
 
   return db.withTransaction(async (client) => {
     const created = await client.query(
-      `INSERT INTO applications (organization_id, slug, name, description, created_by)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO applications (organization_id, slug, name, description, created_by, multiplayer)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [user.organization_id, normalizedSlug, title, String(description || '').slice(0, 2000), user.id]
+      [
+        user.organization_id,
+        normalizedSlug,
+        title,
+        String(description || '').slice(0, 2000),
+        user.id,
+        Boolean(multiplayer),
+      ]
     );
     const app = created.rows[0];
     await client.query(
@@ -135,7 +142,23 @@ async function ingestRelease({ user, application, version, zipBuffer }) {
 
   await assertCanPublish(user, application.id);
   const used = await userStorageBytes(user.id);
-  if (used + zipBuffer.length > config.limits.maxUserStorageBytes) {
+  const quota = await db.query(
+    `SELECT max_upload_bytes, max_member_storage_bytes
+     FROM organization_quotas WHERE organization_id = $1`,
+    [user.organization_id]
+  );
+  const uploadLimit = quota.rowCount
+    ? Math.min(config.limits.maxUploadBytes, Number(quota.rows[0].max_upload_bytes))
+    : config.limits.maxUploadBytes;
+  const storageLimit = quota.rowCount
+    ? Math.min(config.limits.maxUserStorageBytes, Number(quota.rows[0].max_member_storage_bytes))
+    : config.limits.maxUserStorageBytes;
+  if (zipBuffer.length > uploadLimit) {
+    const error = new Error('Upload exceeds the organization file limit');
+    error.status = 413;
+    throw error;
+  }
+  if (used + zipBuffer.length > storageLimit) {
     const error = new Error('Upload quota exceeded for this publisher');
     error.status = 413;
     throw error;

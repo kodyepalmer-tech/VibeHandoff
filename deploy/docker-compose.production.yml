@@ -1,0 +1,49 @@
+# Production processes only. Postgres and the private bucket are external.
+# Copy .env.example to .env in the repo root and set real values first.
+# NODE_ENV, AUTH_ADAPTER, and PLATFORM_MODE are forced here so a development
+# .env cannot turn the dev login back on or flip this box into the public store.
+# The public VibeHandoff site is a separate host with PLATFORM_MODE=public.
+# Each process migrates on startup. src/db.js holds one advisory lock so
+# the two processes do not apply the same migration file.
+
+services:
+  portal:
+    image: ${VIBEHANDOFF_IMAGE:-vibehandoff:local}
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: true
+    environment:
+      NODE_ENV: production
+      AUTH_ADAPTER: oidc
+      PLATFORM_MODE: enterprise
+      APP_ROLE: portal
+      PORTAL_PORT: "3000"
+    ports:
+      - "${PORTAL_PUBLISH_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  artifact-host:
+    image: ${VIBEHANDOFF_IMAGE:-vibehandoff:local}
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: true
+    environment:
+      NODE_ENV: production
+      AUTH_ADAPTER: oidc
+      PLATFORM_MODE: enterprise
+      APP_ROLE: artifact
+      ARTIFACT_PORT: "3001"
+    ports:
+      - "${ARTIFACT_PUBLISH_PORT:-3001}:3001"
+    command: ["node", "src/index.js"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3001/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12

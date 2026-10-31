@@ -33,8 +33,12 @@ async function consumeRateLimit(client, key, windowMs, max) {
   return { allowed: true, remaining: Math.max(0, max - count), retryAfter: 0 };
 }
 
-function createLimiter({ windowMs, max, name }) {
+function createLimiter({ windowMs, max, name, skip }) {
   return function rateLimit(req, res, next) {
+    if (typeof skip === 'function' && skip(req)) {
+      next();
+      return;
+    }
     const key = `${name}:${clientIp(req)}:${req.baseUrl || ''}${req.path}`;
     db.withTransaction((client) => consumeRateLimit(client, key, windowMs, max))
       .then((result) => {
@@ -51,10 +55,21 @@ function createLimiter({ windowMs, max, name }) {
   };
 }
 
+function isLiveRoomTraffic(req) {
+  return /\/rooms\/[^/]+\/events$/.test(req.path);
+}
+
 const apiLimiter = createLimiter({
   name: 'api',
   windowMs: config.limits.rateLimitWindowMs,
   max: config.limits.rateLimitMax,
+  skip: isLiveRoomTraffic,
+});
+
+const roomEventsLimiter = createLimiter({
+  name: 'room',
+  windowMs: 10_000,
+  max: 250,
 });
 
 const uploadLimiter = createLimiter({
@@ -98,7 +113,7 @@ function artifactSecurity() {
         imgSrc: ["'self'", 'data:', 'blob:'],
         fontSrc: ["'self'", 'data:'],
         mediaSrc: ["'self'"],
-        connectSrc: ["'none'"],
+        connectSrc: config.platform.csp === 'strict' ? ["'none'"] : ["'self'"],
         formAction: ["'none'"],
         objectSrc: ["'none'"],
         baseUri: ["'none'"],
@@ -138,6 +153,7 @@ module.exports = {
   createLimiter,
   consumeRateLimit,
   apiLimiter,
+  roomEventsLimiter,
   uploadLimiter,
   portalSecurity,
   artifactSecurity,

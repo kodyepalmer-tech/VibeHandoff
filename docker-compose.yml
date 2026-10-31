@@ -61,6 +61,8 @@ services:
       S3_ACCESS_KEY: vibehandoff
       S3_SECRET_KEY: vibehandoff-secret
       S3_FORCE_PATH_STYLE: "true"
+      # SeaweedFS does not apply SSE-S3. Production S3 leaves S3_SSE unset.
+      S3_SSE: "false"
       OIDC_ISSUER: ${OIDC_ISSUER:-}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
@@ -70,6 +72,7 @@ services:
       OIDC_DISPLAY_NAME_CLAIM: ${OIDC_DISPLAY_NAME_CLAIM:-name}
     ports:
       - "3000:3000"
+    restart: on-failure
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/healthz"]
       interval: 10s
@@ -101,8 +104,10 @@ services:
       S3_ACCESS_KEY: vibehandoff
       S3_SECRET_KEY: vibehandoff-secret
       S3_FORCE_PATH_STYLE: "true"
+      S3_SSE: "false"
     ports:
       - "3001:3001"
+    restart: on-failure
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3001/healthz"]
       interval: 10s
@@ -124,6 +129,7 @@ services:
       S3_ACCESS_KEY: vibehandoff
       S3_SECRET_KEY: vibehandoff-secret
       S3_FORCE_PATH_STYLE: "true"
+      S3_SSE: "false"
       SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-string}
       ORGANIZATION_SLUG: ${ORGANIZATION_SLUG:-acme}
       ORGANIZATION_NAME: ${ORGANIZATION_NAME:-Acme}

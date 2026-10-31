@@ -5,11 +5,13 @@ const db = require('./db');
 const marketplaceSelect = `
   SELECT
     applications.id,
+    applications.organization_id,
     applications.slug,
     applications.name,
     applications.description,
     applications.created_at,
     applications.updated_at,
+    applications.multiplayer,
     users.display_name AS creator_name,
     users.email AS creator_email,
     releases.id AS release_id,
@@ -36,8 +38,12 @@ const marketplaceSelect = `
 `;
 
 async function listMarketplace({ organizationId, q, tag }) {
-  const params = [organizationId];
-  const where = ['applications.organization_id = $1'];
+  const params = [];
+  const where = [];
+  if (organizationId) {
+    params.push(organizationId);
+    where.push(`applications.organization_id = $${params.length}`);
+  }
   if (q) {
     params.push(`%${q.toLowerCase()}%`);
     where.push(
@@ -55,7 +61,7 @@ async function listMarketplace({ organizationId, q, tag }) {
   }
   const result = await db.query(
     `${marketplaceSelect}
-     WHERE ${where.join(' AND ')}
+     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
      ORDER BY metrics.launch_count DESC NULLS LAST, applications.updated_at DESC`,
     params
   );
@@ -63,6 +69,19 @@ async function listMarketplace({ organizationId, q, tag }) {
 }
 
 async function getMarketplaceApp({ organizationId, slug }) {
+  if (!organizationId) {
+    const result = await db.query(
+      `${marketplaceSelect}
+       WHERE applications.slug = $1`,
+      [slug]
+    );
+    if (result.rowCount > 1) {
+      const error = new Error('More than one application uses that slug');
+      error.status = 409;
+      throw error;
+    }
+    return result.rows[0] || null;
+  }
   const result = await db.query(
     `${marketplaceSelect}
      WHERE applications.organization_id = $1 AND applications.slug = $2`,
@@ -142,27 +161,36 @@ async function recordLaunch({ organizationId, applicationId, releaseId, userId }
 }
 
 async function listTags(organizationId) {
+  const params = [];
+  let orgFilter = '';
+  if (organizationId) {
+    params.push(organizationId);
+    orgFilter = 'WHERE tags.organization_id = $1';
+  }
   const result = await db.query(
     `SELECT tags.slug, tags.name, COUNT(application_tags.application_id)::int AS app_count
      FROM tags
      LEFT JOIN application_tags ON application_tags.tag_id = tags.id
      LEFT JOIN applications ON applications.id = application_tags.application_id
      LEFT JOIN releases ON releases.application_id = applications.id AND releases.status = 'published'
-     WHERE tags.organization_id = $1
+     ${orgFilter}
      GROUP BY tags.id
      ORDER BY tags.slug`,
-    [organizationId]
+    params
   );
   return result.rows;
 }
 
 async function marketplaceMetrics(organizationId) {
+  const orgApps = organizationId ? 'WHERE organization_id = $1' : '';
+  const orgReleases = organizationId ? 'WHERE organization_id = $1 AND status = \'published\'' : 'WHERE status = \'published\'';
+  const orgLaunches = organizationId ? 'WHERE organization_id = $1' : '';
   const result = await db.query(
     `SELECT
-       (SELECT COUNT(*) FROM applications WHERE organization_id = $1)::int AS application_count,
-       (SELECT COUNT(*) FROM releases WHERE organization_id = $1 AND status = 'published')::int AS published_release_count,
-       (SELECT COUNT(*) FROM launch_events WHERE organization_id = $1)::int AS launch_count`,
-    [organizationId]
+       (SELECT COUNT(*) FROM applications ${orgApps})::int AS application_count,
+       (SELECT COUNT(*) FROM releases ${orgReleases})::int AS published_release_count,
+       (SELECT COUNT(*) FROM launch_events ${orgLaunches})::int AS launch_count`,
+    organizationId ? [organizationId] : []
   );
   return result.rows[0];
 }

@@ -73,6 +73,7 @@ async function boot() {
             .split(',')
             .map((value) => value.trim())
             .filter(Boolean),
+          multiplayer: form.get('multiplayer') === 'on',
         },
       });
       event.target.reset();

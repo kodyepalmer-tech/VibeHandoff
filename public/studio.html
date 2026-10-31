@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Studio · VibeHandoff</title>
+    <title>Studio · Vibe Handoff Enterprise</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -14,7 +14,7 @@
           <path d="M8 23c5-11 15-11 20 0" fill="none" stroke="#f4ead8" stroke-width="2.4"/>
           <circle cx="18" cy="13" r="3.2" fill="#d96b2b"/>
         </svg>
-        <span class="brand-copy"><strong>VibeHandoff</strong><span>Internal studio</span></span>
+        <span class="brand-copy"><strong data-product>Vibe Handoff Enterprise</strong><span data-tagline>Internal studio</span></span>
       </a>
       <nav>
         <a href="/" data-nav="market">Marketplace</a>
@@ -27,12 +27,13 @@
     <main class="split">
       <section class="panel stack">
         <h1>Creator studio</h1>
-        <p class="meta">Upload a static ZIP. VibeHandoff quarantines it, validates the static-only policy, then lets you promote a version to immutable storage.</p>
+        <p class="meta">Upload a static ZIP. The studio quarantines it, validates the static-only policy, then lets you promote a version to immutable storage.</p>
         <form id="create" class="stack">
           <input name="name" placeholder="App name" required />
           <input name="slug" placeholder="slug-optional" />
           <input name="tags" placeholder="tags, comma separated" />
           <textarea name="description" placeholder="What should people do with it?"></textarea>
+          <label class="check"><input type="checkbox" name="multiplayer" /> People can join a live game</label>
           <button type="submit">Create app</button>
         </form>
         <p class="error" id="create-error" hidden></p>
