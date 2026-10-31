@@ -1,0 +1,135 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: vibehandoff
+      POSTGRES_PASSWORD: vibehandoff
+      POSTGRES_DB: vibehandoff
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vibehandoff -d vibehandoff"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.80
+    command:
+      - server
+      - -dir=/data
+      - -ip=seaweedfs
+      - -ip.bind=0.0.0.0
+      - -s3
+      - -s3.port=8333
+      - -s3.config=/etc/seaweedfs/s3.json
+    volumes:
+      - seaweed-data:/data
+      - ./deploy/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    ports:
+      - "8333:8333"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9333/cluster/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  portal:
+    build: .
+    image: vibehandoff:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      AUTH_ADAPTER: ${AUTH_ADAPTER:-dev}
+      APP_ROLE: portal
+      PORTAL_PORT: 3000
+      PORTAL_ORIGIN: ${PORTAL_ORIGIN:-http://localhost:3000}
+      ARTIFACT_HOST_ORIGIN: ${ARTIFACT_HOST_ORIGIN:-http://localhost:3001}
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-string}
+      ORGANIZATION_SLUG: ${ORGANIZATION_SLUG:-acme}
+      ORGANIZATION_NAME: ${ORGANIZATION_NAME:-Acme}
+      DATABASE_URL: postgres://vibehandoff:vibehandoff@postgres:5432/vibehandoff
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_BUCKET: ${S3_BUCKET:-vibehandoff-artifacts}
+      S3_ACCESS_KEY: vibehandoff
+      S3_SECRET_KEY: vibehandoff-secret
+      S3_FORCE_PATH_STYLE: "true"
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-http://localhost:3000/auth/callback}
+      OIDC_ORG_CLAIM: ${OIDC_ORG_CLAIM:-organization}
+      OIDC_ROLE_CLAIM: ${OIDC_ROLE_CLAIM:-role}
+      OIDC_DISPLAY_NAME_CLAIM: ${OIDC_DISPLAY_NAME_CLAIM:-name}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  artifact-host:
+    image: vibehandoff:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      AUTH_ADAPTER: ${AUTH_ADAPTER:-dev}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-http://localhost:3000/auth/callback}
+      APP_ROLE: artifact
+      ARTIFACT_PORT: 3001
+      PORTAL_ORIGIN: ${PORTAL_ORIGIN:-http://localhost:3000}
+      ARTIFACT_HOST_ORIGIN: ${ARTIFACT_HOST_ORIGIN:-http://localhost:3001}
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-string}
+      DATABASE_URL: postgres://vibehandoff:vibehandoff@postgres:5432/vibehandoff
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_BUCKET: ${S3_BUCKET:-vibehandoff-artifacts}
+      S3_ACCESS_KEY: vibehandoff
+      S3_SECRET_KEY: vibehandoff-secret
+      S3_FORCE_PATH_STYLE: "true"
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3001/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    command: ["node", "src/index.js"]
+
+  seed:
+    image: vibehandoff:local
+    depends_on:
+      portal:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      AUTH_ADAPTER: dev
+      DATABASE_URL: postgres://vibehandoff:vibehandoff@postgres:5432/vibehandoff
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_BUCKET: ${S3_BUCKET:-vibehandoff-artifacts}
+      S3_ACCESS_KEY: vibehandoff
+      S3_SECRET_KEY: vibehandoff-secret
+      S3_FORCE_PATH_STYLE: "true"
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-string}
+      ORGANIZATION_SLUG: ${ORGANIZATION_SLUG:-acme}
+      ORGANIZATION_NAME: ${ORGANIZATION_NAME:-Acme}
+    command: ["node", "scripts/seed.js"]
+    restart: "no"
+
+volumes:
+  postgres-data:
+  seaweed-data:

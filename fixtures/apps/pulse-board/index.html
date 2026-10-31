@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Pulse Board</title>
+    <style>
+      body { margin: 0; font-family: sans-serif; background: #efe2c8; color: #1b1713; }
+      main { width: min(720px, calc(100% - 32px)); margin: 40px auto; }
+      textarea, button { font: inherit; }
+      textarea { width: 100%; min-height: 80px; }
+      li { padding: 8px 0; border-bottom: 1px solid #d7c6a5; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Pulse Board</h1>
+      <p>Local-only notes for a retro. Nothing here phones home.</p>
+      <textarea id="note" placeholder="What moved this week?"></textarea>
+      <p><button id="add">Pin note</button></p>
+      <ul id="list"></ul>
+    </main>
+    <script>
+      const list = document.getElementById('list');
+      document.getElementById('add').onclick = () => {
+        const value = document.getElementById('note').value.trim();
+        if (!value) return;
+        const item = document.createElement('li');
+        item.textContent = value;
+        list.prepend(item);
+        document.getElementById('note').value = '';
+      };
+    </script>
+  </body>
+</html>

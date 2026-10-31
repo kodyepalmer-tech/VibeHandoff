@@ -1,0 +1,43 @@
+{
+  "name": "vibehandoff",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Internal app store for AI-built games, tools, and shared experiences.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "start:portal": "APP_ROLE=portal node src/index.js",
+    "start:artifacts": "APP_ROLE=artifact node src/index.js",
+    "migrate": "node src/migrate.js",
+    "seed": "node scripts/seed.js",
+    "syntax": "node scripts/check-syntax.js",
+    "audit": "npm audit --audit-level=high",
+    "test": "node --test --test-concurrency=1 --test-timeout=120000 tests/*.test.js",
+    "test:api": "node --test --test-concurrency=1 --test-timeout=120000 tests/api.test.js tests/validation.test.js tests/security.test.js",
+    "test:browser": "node --test --test-concurrency=1 --test-timeout=180000 tests/browser.test.js",
+    "ci": "npm run syntax && npm test && npm run audit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.758.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "mime-types": "^2.1.35",
+    "multer": "^2.5.0",
+    "openid-client": "^5.7.1",
+    "pg": "^8.14.1",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "uuid": "^11.1.0",
+    "yauzl": "^3.2.0",
+    "yazl": "^3.3.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.51.1",
+    "supertest": "^7.1.0"
+  }
+}
