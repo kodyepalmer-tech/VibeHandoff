@@ -22,7 +22,7 @@ async function boot() {
               <strong>${identity.display_name}</strong>
               <div class="meta">${identity.email} · ${identity.role}</div>
             </div>
-            <button data-email="${identity.email}">Enter</button>
+            <button class="ghost" type="button" data-email="${identity.email}">Enter</button>
           </div>`
           )
           .join('')}

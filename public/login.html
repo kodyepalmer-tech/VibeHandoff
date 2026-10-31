@@ -7,10 +7,24 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main style="max-width: 620px;">
-      <p class="eyebrow">VibeHandoff</p>
-      <h1>Sign in to the studio.</h1>
-      <p class="lede">Production uses your organization’s OIDC provider. Local staging can use seeded development identities.</p>
+    <main style="max-width: 720px;">
+      <p class="eyebrow">Internal app store</p>
+      <h1>Build something. Hand it off.</h1>
+      <p class="lede">VibeHandoff is where your company’s games, tools, and experiments go live. Publishers upload a static ZIP. Everyone else launches it in a sandbox that cannot see the portal session.</p>
+      <section class="roles">
+        <article>
+          <h2>Member</h2>
+          <p>Search the shelf and launch what is published.</p>
+        </article>
+        <article>
+          <h2>Publisher</h2>
+          <p>Upload a version, read validation, and publish it.</p>
+        </article>
+        <article>
+          <h2>Admin</h2>
+          <p>Read the audit log, change roles, and pull a live app.</p>
+        </article>
+      </section>
       <section class="panel stack" id="panel">
         <a class="button" href="/auth/login">Continue with organization identity</a>
       </section>

@@ -56,6 +56,9 @@ async function withTransaction(fn) {
   }
 }
 
+// Stable lock so the portal and the artifact host can boot together.
+const MIGRATION_LOCK_KEY = 748211;
+
 async function migrate(databaseUrl) {
   const active = databaseUrl ? new Pool({ connectionString: databaseUrl }) : getPool();
   const dir = path.join(__dirname, '..', 'migrations');
@@ -64,24 +67,42 @@ async function migrate(databaseUrl) {
     .filter((name) => name.endsWith('.sql'))
     .sort();
 
-  await active.query(`
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      id TEXT PRIMARY KEY,
-      applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `);
+  let client;
+  try {
+    client = await active.connect();
+    await client.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_KEY]);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        id TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
 
-  for (const file of files) {
-    const applied = await active.query('SELECT 1 FROM schema_migrations WHERE id = $1', [file]);
-    if (applied.rowCount) continue;
-    const sql = fs.readFileSync(path.join(dir, file), 'utf8');
-    await active.query(sql);
-    await active.query('INSERT INTO schema_migrations (id) VALUES ($1)', [file]);
-    logger.info({ file }, 'applied migration');
-  }
-
-  if (databaseUrl) {
-    await active.end();
+    for (const file of files) {
+      const applied = await client.query('SELECT 1 FROM schema_migrations WHERE id = $1', [file]);
+      if (applied.rowCount) continue;
+      const sql = fs.readFileSync(path.join(dir, file), 'utf8');
+      await client.query('BEGIN');
+      try {
+        await client.query(sql);
+        await client.query('INSERT INTO schema_migrations (id) VALUES ($1)', [file]);
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      }
+      logger.info({ file }, 'applied migration');
+    }
+  } finally {
+    if (client) {
+      await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]).catch((err) => {
+        logger.warn({ err: err.message }, 'migration lock release failed');
+      });
+      client.release();
+    }
+    if (databaseUrl) {
+      await active.end();
+    }
   }
 }
 

@@ -1,0 +1,11 @@
+# Two hostnames, two processes. Do not route both names at one upstream.
+# Replace the hostnames, then run Caddy with this file on the same network
+# as the production Compose services.
+
+apps.example.com {
+	reverse_proxy portal:3000
+}
+
+play.example.com {
+	reverse_proxy artifact-host:3001
+}

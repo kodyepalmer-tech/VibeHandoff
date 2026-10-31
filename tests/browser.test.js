@@ -34,6 +34,8 @@ test('browser: member discovers and launches another creator release', async (t)
 
   const page = await browser.newPage();
   await page.goto('http://127.0.0.1:13000/login');
+  await page.getByRole('heading', { name: 'Build something. Hand it off.' }).waitFor();
+  await page.getByRole('heading', { name: 'Admin' }).waitFor();
   await page.locator('button[data-email="jordan@acme.example"]').click();
   await page.waitForURL('http://127.0.0.1:13000/');
   await page.waitForSelector('#who');

@@ -15,11 +15,16 @@ COPY public ./public
 COPY scripts ./scripts
 COPY src ./src
 
+RUN chown -R node:node /app
+
 ENV NODE_ENV=production
 ENV APP_ROLE=portal
 EXPOSE 3000
 
+USER node
+
+# Portal listens on PORTAL_PORT. The artifact role listens on ARTIFACT_PORT.
 HEALTHCHECK --interval=15s --timeout=5s --retries=8 \
-  CMD curl -fsS http://127.0.0.1:3000/healthz || exit 1
+  CMD sh -c 'if [ "$APP_ROLE" = "artifact" ]; then port="${ARTIFACT_PORT:-3001}"; else port="${PORTAL_PORT:-3000}"; fi; curl -fsS "http://127.0.0.1:${port}/healthz"'
 
 CMD ["node", "src/index.js"]
