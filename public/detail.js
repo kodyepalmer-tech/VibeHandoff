@@ -14,7 +14,8 @@ async function boot() {
   const slug = location.pathname.split('/')[2];
   const data = await api(`/api/apps/${encodeURIComponent(slug)}`);
   const app = data.app;
-  document.title = `${app.name} · VibeHandoff`;
+  const product = document.querySelector('[data-product]')?.textContent?.trim() || 'Vibe Handoff Enterprise';
+  document.title = `${app.name} · ${product}`;
   const launchHref = `/apps/${encodeURIComponent(app.slug)}/launch`;
   const play = app.multiplayer
     ? `<div class="play-actions">

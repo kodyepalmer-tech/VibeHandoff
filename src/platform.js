@@ -15,8 +15,8 @@ function platformProfile(mode) {
   if (resolved === 'public') {
     return {
       mode: 'public',
-      productName: 'VibeSteam',
-      tagline: 'Public store',
+      productName: 'VibeHandoff',
+      tagline: 'Public',
       auth: 'oauth',
       catalog: 'public',
       leaderboardScope: 'global',
@@ -27,7 +27,7 @@ function platformProfile(mode) {
   }
   return {
     mode: 'enterprise',
-    productName: 'VibeHandoff',
+    productName: 'Vibe Handoff Enterprise',
     tagline: 'Internal studio',
     auth: 'oidc',
     catalog: 'organization',

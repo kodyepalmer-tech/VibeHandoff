@@ -2,7 +2,7 @@
 # Copy .env.example to .env in the repo root and set real values first.
 # NODE_ENV, AUTH_ADAPTER, and PLATFORM_MODE are forced here so a development
 # .env cannot turn the dev login back on or flip this box into the public store.
-# A VibeSteam deployment is a separate host with PLATFORM_MODE=public.
+# The public VibeHandoff site is a separate host with PLATFORM_MODE=public.
 # Each process migrates on startup. src/db.js holds one advisory lock so
 # the two processes do not apply the same migration file.
 

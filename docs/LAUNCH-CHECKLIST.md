@@ -1,6 +1,6 @@
 # Launch checklist
 
-Use this before inviting a pilot team onto VibeHandoff.
+Use this before inviting a pilot team onto Vibe Handoff Enterprise.
 
 ## Product gate
 

@@ -1,6 +1,6 @@
-# VibeHandoff deployment runbook
+# Vibe Handoff Enterprise deployment runbook
 
-VibeHandoff is an Express/JavaScript internal app store. Production needs four things: PostgreSQL, S3-compatible object storage, an OIDC provider, and a second origin for untrusted artifacts.
+Vibe Handoff Enterprise is an Express/JavaScript internal app store. The public site is VibeHandoff, on a separate host. Production needs four things: PostgreSQL, S3-compatible object storage, an OIDC provider, and a second origin for untrusted artifacts.
 
 ## Topology
 

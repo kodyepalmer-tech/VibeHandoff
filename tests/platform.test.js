@@ -35,7 +35,7 @@ function loadConfig(extra) {
 
 test('platform profiles keep the two products apart', () => {
   const enterprise = platformProfile('enterprise');
-  assert.equal(enterprise.productName, 'VibeHandoff');
+  assert.equal(enterprise.productName, 'Vibe Handoff Enterprise');
   assert.equal(enterprise.auth, 'oidc');
   assert.equal(enterprise.catalog, 'organization');
   assert.equal(enterprise.leaderboardScope, 'organization');
@@ -44,7 +44,7 @@ test('platform profiles keep the two products apart', () => {
   assert.equal(enterprise.csp, 'strict');
 
   const pub = platformProfile('public');
-  assert.equal(pub.productName, 'VibeSteam');
+  assert.equal(pub.productName, 'VibeHandoff');
   assert.equal(pub.auth, 'oauth');
   assert.equal(pub.catalog, 'public');
   assert.equal(pub.leaderboardScope, 'global');
@@ -220,7 +220,7 @@ test('enterprise mode saves progress, keeps the best score, and gates reviews an
   const platform = await harness.request.get('/api/platform');
   assert.equal(platform.status, 200);
   assert.equal(platform.body.mode, 'enterprise');
-  assert.equal(platform.body.productName, 'VibeHandoff');
+  assert.equal(platform.body.productName, 'Vibe Handoff Enterprise');
   assert.equal(platform.body.reviews, false);
   assert.equal(platform.body.exports, 'admin-approval');
 

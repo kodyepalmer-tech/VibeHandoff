@@ -1,10 +1,10 @@
--- Combined picture of a fresh VibeHandoff / VibeSteam database.
+-- Combined picture of a fresh VibeHandoff / Vibe Handoff Enterprise database.
 --
 -- The running app does not execute this file. It applies migrations/*.sql
 -- in order (see src/db.js). This file is the same end state, for reading
 -- and for loading an empty schema.
 --
--- PLATFORM_MODE=public (VibeSteam) and PLATFORM_MODE=enterprise (VibeHandoff)
+-- PLATFORM_MODE=public (VibeHandoff) and PLATFORM_MODE=enterprise (Vibe Handoff Enterprise)
 -- are separate deployments. They do not share this database and nothing
 -- here copies a row from one mode to the other. Public profiles, reviews,
 -- and leaderboards live beside organization quotas, memberships, and

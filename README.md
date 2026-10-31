@@ -1,6 +1,6 @@
 # VibeHandoff
 
-Your company is full of builders. VibeHandoff is the internal shelf where their games, tools, and shared experiments go live. Someone publishes a static web app. Everyone else in the organization can find it and play it. The portal never runs their code.
+VibeHandoff is the public platform. Vibe Handoff Enterprise is the same engine, hosted inside a company. This checkout defaults to the enterprise product: an internal shelf where games, tools, and shared experiments go live. Someone publishes a static web app. Everyone else in the organization can find it and play it. The portal never runs their code.
 
 ## What you can do
 
@@ -22,7 +22,7 @@ The same parent page is the only door for saved progress and high scores. A game
 
 | | `enterprise` (default) | `public` |
 | --- | --- | --- |
-| Product | VibeHandoff, on the company network | VibeSteam, a public store |
+| Product | Vibe Handoff Enterprise, on the company network | VibeHandoff, the public platform |
 | Sign-in | Corporate OIDC. Production refuses anything else. | Public OAuth (Discord, Google, GitHub, or Apple). Production requires `AUTH_ADAPTER=oauth` and one client id. Those redirects are not connected yet. |
 | Catalog | Signed-in organization | Every published app on this deployment |
 | Reviews and profiles | Off | On |

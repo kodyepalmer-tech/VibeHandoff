@@ -53,6 +53,10 @@
   async function applyBrand() {
     try {
       const platform = await api('/api/platform');
+      const baked = 'Vibe Handoff Enterprise';
+      if (document.title.includes(baked)) {
+        document.title = document.title.replaceAll(baked, platform.productName);
+      }
       document.querySelectorAll('[data-product]').forEach((node) => {
         node.textContent = platform.productName;
       });
