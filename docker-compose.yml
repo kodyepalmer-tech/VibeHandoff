@@ -1,0 +1,134 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: vibehandoff
+      POSTGRES_PASSWORD: vibehandoff
+      POSTGRES_DB: vibehandoff
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vibehandoff -d vibehandoff"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio-secret
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minio minio-secret &&
+      mc mb -p local/vibehandoff-artifacts &&
+      mc anonymous set none local/vibehandoff-artifacts
+      "
+
+  portal:
+    build: .
+    image: vibehandoff:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      AUTH_ADAPTER: ${AUTH_ADAPTER:-dev}
+      APP_ROLE: portal
+      PORTAL_PORT: 3000
+      PORTAL_ORIGIN: ${PORTAL_ORIGIN:-http://localhost:3000}
+      ARTIFACT_HOST_ORIGIN: ${ARTIFACT_HOST_ORIGIN:-http://localhost:3001}
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-string}
+      ORGANIZATION_SLUG: ${ORGANIZATION_SLUG:-acme}
+      ORGANIZATION_NAME: ${ORGANIZATION_NAME:-Acme}
+      DATABASE_URL: postgres://vibehandoff:vibehandoff@postgres:5432/vibehandoff
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-vibehandoff-artifacts}
+      S3_ACCESS_KEY: minio
+      S3_SECRET_KEY: minio-secret
+      S3_FORCE_PATH_STYLE: "true"
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-http://localhost:3000/auth/callback}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  artifact-host:
+    image: vibehandoff:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      AUTH_ADAPTER: ${AUTH_ADAPTER:-dev}
+      APP_ROLE: artifact
+      ARTIFACT_PORT: 3001
+      PORTAL_ORIGIN: ${PORTAL_ORIGIN:-http://localhost:3000}
+      ARTIFACT_HOST_ORIGIN: ${ARTIFACT_HOST_ORIGIN:-http://localhost:3001}
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-string}
+      DATABASE_URL: postgres://vibehandoff:vibehandoff@postgres:5432/vibehandoff
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-vibehandoff-artifacts}
+      S3_ACCESS_KEY: minio
+      S3_SECRET_KEY: minio-secret
+      S3_FORCE_PATH_STYLE: "true"
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3001/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    command: ["node", "src/index.js"]
+
+  seed:
+    image: vibehandoff:local
+    depends_on:
+      portal:
+        condition: service_healthy
+    environment:
+      AUTH_ADAPTER: ${AUTH_ADAPTER:-dev}
+      DATABASE_URL: postgres://vibehandoff:vibehandoff@postgres:5432/vibehandoff
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-vibehandoff-artifacts}
+      S3_ACCESS_KEY: minio
+      S3_SECRET_KEY: minio-secret
+      S3_FORCE_PATH_STYLE: "true"
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-string}
+      ORGANIZATION_SLUG: ${ORGANIZATION_SLUG:-acme}
+      ORGANIZATION_NAME: ${ORGANIZATION_NAME:-Acme}
+    command: ["node", "scripts/seed.js"]
+    restart: "no"
+
+volumes:
+  postgres-data:
+  minio-data:
