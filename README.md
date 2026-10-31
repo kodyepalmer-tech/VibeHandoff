@@ -23,7 +23,7 @@ The same parent page is the only door for saved progress and high scores. A game
 | | `enterprise` (default) | `public` |
 | --- | --- | --- |
 | Product | Vibe Handoff Enterprise, on the company network | VibeHandoff, the public platform |
-| Sign-in | Corporate OIDC. Production refuses anything else. | Public OAuth (Discord, Google, GitHub, or Apple). Production requires `AUTH_ADAPTER=oauth` and one client id. Those redirects are not connected yet. |
+| Sign-in | Corporate OIDC. Production refuses anything else. | GitHub. Production requires `AUTH_ADAPTER=oauth` and one client id. Register the callback as `${PORTAL_ORIGIN}/auth/callback`. |
 | Catalog | Signed-in organization | Every published app on this deployment |
 | Reviews and profiles | Off | On |
 | Taking an asset out | An admin approves the request first | The creator’s request is recorded as approved |
