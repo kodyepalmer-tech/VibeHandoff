@@ -88,6 +88,14 @@ async function seed() {
       multiplayer: true,
       files: readApp('snake'),
     },
+    {
+      name: 'Sandbox',
+      slug: 'sandbox',
+      description: 'A solo sandbox. Click the grid to drop a block. This one stays on your own screen.',
+      tags: ['game', 'sandbox'],
+      version: '1.0.0',
+      files: readApp('sandbox'),
+    },
   ];
 
   for (const spec of apps) {

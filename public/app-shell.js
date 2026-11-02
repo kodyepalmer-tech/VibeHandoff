@@ -50,46 +50,58 @@
     }
   }
 
+  let platformPromise;
+
   async function applyBrand() {
-    try {
-      const platform = await api('/api/platform');
-      const baked = 'Vibe Handoff Enterprise';
-      if (document.title.includes(baked)) {
-        document.title = document.title.replaceAll(baked, platform.productName);
-      }
-      document.querySelectorAll('[data-product]').forEach((node) => {
-        node.textContent = platform.productName;
-      });
-      document.querySelectorAll('[data-tagline]').forEach((node) => {
-        node.textContent = platform.tagline;
-      });
-      const heading = document.querySelector('h1');
-      const eyebrow = document.querySelector('main .eyebrow');
-      if (eyebrow && heading && heading.textContent.trim() === 'Sign in to the studio.') {
-        eyebrow.textContent = platform.productName;
-      }
-    } catch {
-      // The baked-in enterprise name stays if the platform route is down.
+    if (!platformPromise) {
+      platformPromise = api('/api/platform')
+        .then((platform) => {
+          state.platform = platform;
+          document.body.classList.toggle('shop', platform.mode === 'public');
+          const baked = 'Vibe Handoff Enterprise';
+          if (document.title.includes(baked)) {
+            document.title = document.title.replaceAll(baked, platform.productName);
+          }
+          document.querySelectorAll('[data-product]').forEach((node) => {
+            node.textContent = platform.productName;
+          });
+          document.querySelectorAll('[data-tagline]').forEach((node) => {
+            node.textContent = platform.tagline;
+          });
+          const heading = document.querySelector('h1');
+          const eyebrow = document.querySelector('main .eyebrow');
+          if (eyebrow && heading && /^Sign in/.test(heading.textContent.trim())) {
+            eyebrow.textContent = platform.productName;
+          }
+          return platform;
+        })
+        .catch(() => null);
     }
+    return platformPromise;
   }
 
-  function renderChrome(active) {
+  async function renderChrome(active) {
+    const platform = await applyBrand();
+    const shop = platform?.mode === 'public';
     const who = $('#who');
     if (who && state.user) {
-      who.textContent = `${state.user.displayName} · ${state.user.role}`;
+      who.textContent = shop ? state.user.displayName : `${state.user.displayName} · ${state.user.role}`;
+    }
+    const market = $('[data-nav="market"]');
+    if (market && shop) market.textContent = 'Store';
+    const studio = $('[data-nav="studio"]');
+    if (studio) {
+      if (shop) studio.textContent = 'Upload';
+      studio.hidden = shop ? !state.user : state.user?.role !== 'publisher';
+    }
+    const admin = $('[data-nav="admin"]');
+    if (admin) {
+      admin.hidden = shop || state.user?.role !== 'admin';
     }
     document.querySelectorAll('nav a[data-nav]').forEach((link) => {
       link.classList.toggle('active', link.dataset.nav === active);
     });
-    const studio = $('[data-nav="studio"]');
-    if (studio) {
-      studio.hidden = state.user?.role !== 'publisher';
-    }
-    const admin = $('[data-nav="admin"]');
-    if (admin) {
-      admin.hidden = state.user?.role !== 'admin';
-    }
-    applyBrand();
+    return platform;
   }
 
   async function logout() {

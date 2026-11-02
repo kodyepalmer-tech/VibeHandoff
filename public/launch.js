@@ -26,6 +26,19 @@ async function boot() {
     room = joined.room;
     $('#room-line').hidden = false;
     $('#room-code').textContent = room.code;
+    const invite = $('#invite');
+    if (invite) {
+      invite.hidden = false;
+      invite.addEventListener('click', async () => {
+        const link = location.href;
+        try {
+          await navigator.clipboard.writeText(link);
+          invite.textContent = 'Invite link copied';
+        } catch {
+          invite.textContent = room.code;
+        }
+      });
+    }
     renderRoster(room.players);
   }
 

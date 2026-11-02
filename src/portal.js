@@ -118,7 +118,7 @@ function createPortalApp() {
     }
   });
 
-  app.post('/api/apps', auth.requireRole('publisher'), async (req, res) => {
+  app.post('/api/apps', auth.requireUploader, async (req, res) => {
     try {
       const created = await publish.createApplication({
         user: req.user,
@@ -147,7 +147,7 @@ function createPortalApp() {
     }
   });
 
-  app.get('/api/studio/apps', auth.requireRole('publisher'), async (req, res) => {
+  app.get('/api/studio/apps', auth.requireUploader, async (req, res) => {
     try {
       const apps = await queries.listStudioApps(req.user.id, req.user.organization_id);
       res.json({ apps });
@@ -156,7 +156,7 @@ function createPortalApp() {
     }
   });
 
-  app.get('/api/apps/:slug/releases', auth.requireRole('publisher'), async (req, res) => {
+  app.get('/api/apps/:slug/releases', auth.requireUploader, async (req, res) => {
     try {
       const application = await queries.getApplicationBySlug({
         organizationId: req.user.organization_id,
@@ -176,7 +176,7 @@ function createPortalApp() {
 
   app.post(
     '/api/apps/:slug/releases',
-    auth.requireRole('publisher'),
+    auth.requireUploader,
     security.uploadLimiter,
     upload.single('artifact'),
     async (req, res) => {
@@ -220,7 +220,7 @@ function createPortalApp() {
     }
   );
 
-  app.post('/api/apps/:slug/releases/:releaseId/publish', auth.requireRole('publisher'), async (req, res) => {
+  app.post('/api/apps/:slug/releases/:releaseId/publish', auth.requireUploader, async (req, res) => {
     try {
       const application = await queries.getApplicationBySlug({
         organizationId: req.user.organization_id,
@@ -250,7 +250,7 @@ function createPortalApp() {
     }
   });
 
-  app.post('/api/apps/:slug/releases/:releaseId/unpublish', auth.requireRole('publisher'), async (req, res) => {
+  app.post('/api/apps/:slug/releases/:releaseId/unpublish', auth.requireUploader, async (req, res) => {
     try {
       const application = await queries.getApplicationBySlug({
         organizationId: req.user.organization_id,

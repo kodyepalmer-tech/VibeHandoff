@@ -230,6 +230,18 @@ function requireRole(...roles) {
   };
 }
 
+function requireUploader(req, res, next) {
+  if (!req.user) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  if (config.platformMode === 'public' || req.user.role === 'publisher') {
+    next();
+    return;
+  }
+  res.status(403).json({ error: 'Insufficient role' });
+}
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, '&amp;')
@@ -485,6 +497,7 @@ module.exports = {
   sessionMiddleware,
   requireAuth,
   requireRole,
+  requireUploader,
   attachAuthRoutes,
   normalizeRole,
   saveOidcTransaction,

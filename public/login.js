@@ -1,18 +1,38 @@
 const { api, applyBrand } = window.VibeHandoff;
 
 async function boot() {
-  applyBrand();
-  try {
-    const platform = await api('/api/platform');
-    if (platform.mode === 'public' && platform.auth === 'oauth') {
-      const link = document.querySelector('#panel a.button');
-      if (link) link.textContent = 'Continue with GitHub';
-      const lede = document.querySelector('.lede');
-      if (lede) lede.textContent = 'Sign in with GitHub.';
+  const platform = await applyBrand();
+  const title = document.getElementById('login-title');
+  const lede = document.getElementById('login-lede');
+  const panel = document.getElementById('panel');
+
+  if (platform?.mode === 'public') {
+    if (title) title.textContent = 'Sign in to play.';
+    if (lede) {
+      lede.textContent = 'Play a game, leave a comment, or upload one of your own.';
     }
-  } catch {
-    // Keep the baked enterprise copy when the platform route is down.
+    const link = panel.querySelector('a.button');
+    if (platform.auth === 'oauth' && link) link.textContent = 'Continue with GitHub';
+    try {
+      await api('/api/me');
+      location.href = '/';
+      return;
+    } catch {
+      // stay on the shop sign-in
+    }
+    try {
+      await api('/api/dev/identities');
+      panel.innerHTML = '<button type="button" id="enter-shop">Enter the shop</button>';
+      document.getElementById('enter-shop').addEventListener('click', async () => {
+        await api('/api/dev/login', { method: 'POST', body: { email: 'maya@acme.example' } });
+        location.href = '/';
+      });
+    } catch {
+      // Production public sign-in keeps the GitHub button.
+    }
+    return;
   }
+
   try {
     await api('/api/me');
     location.href = '/';
@@ -22,7 +42,6 @@ async function boot() {
   }
   try {
     const data = await api('/api/dev/identities');
-    const panel = document.getElementById('panel');
     panel.innerHTML = `
       <h2>Development identities</h2>
       <div class="identities">

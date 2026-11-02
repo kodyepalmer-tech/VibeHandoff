@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sandbox</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #101820; color: #e8f1f8; font-family: "Segoe UI", sans-serif; }
+      h1 { position: fixed; left: 16px; top: 12px; margin: 0; font-size: 1.3rem; }
+      p { position: fixed; left: 16px; top: 42px; margin: 0; color: #9eb4c8; }
+      canvas { display: block; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <h1>Sandbox</h1>
+    <p>Solo. Click a cell to drop a block. This game stays on your screen.</p>
+    <canvas id="board"></canvas>
+    <script>
+      const canvas = document.getElementById('board');
+      const ctx = canvas.getContext('2d');
+      const cols = 16;
+      const rows = 10;
+      const cells = new Map();
+      const colors = ['#66c0f4', '#f4c542', '#67d18a', '#e06b6b', '#c792ea'];
+      let next = 0;
+
+      function resize() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        draw();
+      }
+
+      function cellSize() {
+        return {
+          w: canvas.width / cols,
+          h: canvas.height / rows,
+        };
+      }
+
+      function draw() {
+        ctx.fillStyle = '#101820';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const { w, h } = cellSize();
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        for (let x = 0; x < cols; x += 1) {
+          for (let y = 0; y < rows; y += 1) {
+            const color = cells.get(`${x},${y}`);
+            if (color) {
+              ctx.fillStyle = color;
+              ctx.fillRect(x * w + 3, y * h + 3, w - 6, h - 6);
+            }
+            ctx.strokeRect(x * w, y * h, w, h);
+          }
+        }
+      }
+
+      canvas.addEventListener('pointerdown', (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const { w, h } = cellSize();
+        const x = Math.floor(((event.clientX - rect.left) / rect.width) * cols);
+        const y = Math.floor(((event.clientY - rect.top) / rect.height) * rows);
+        if (x < 0 || y < 0 || x >= cols || y >= rows) return;
+        cells.set(`${x},${y}`, colors[next % colors.length]);
+        next += 1;
+        draw();
+      });
+
+      window.addEventListener('resize', resize);
+      resize();
+    </script>
+  </body>
+</html>

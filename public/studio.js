@@ -1,4 +1,4 @@
-const { api, loadSession, renderChrome, logout, $ } = window.VibeHandoff;
+const { api, loadSession, renderChrome, logout, state, $ } = window.VibeHandoff;
 
 function escapeHtml(value) {
   return String(value)
@@ -45,16 +45,30 @@ function appBlock(app) {
   `;
 }
 
+let shop = false;
+
 async function refresh() {
   const data = await api('/api/studio/apps');
-  $('#owned').innerHTML = `<h2>Owned apps</h2>${data.apps.map(appBlock).join('') || '<p class="empty">Create an app to publish your first handoff.</p>'}`;
+  const heading = shop ? 'Your games' : 'Owned apps';
+  const empty = shop ? 'Upload a game to put it on the shelf.' : 'Create an app to publish your first handoff.';
+  $('#owned').innerHTML = `<h2>${heading}</h2>${data.apps.map(appBlock).join('') || `<p class="empty">${empty}</p>`}`;
 }
 
 async function boot() {
   await loadSession();
-  renderChrome('studio');
+  const platform = await renderChrome('studio');
+  shop = platform?.mode === 'public';
   $('#logout').addEventListener('click', logout);
-  if (window.VibeHandoff.state.user?.role !== 'publisher') {
+  if (shop) {
+    document.title = 'Upload · VibeHandoff';
+    $('#studio-title').textContent = 'Upload a game';
+    $('#studio-lede').textContent = 'Post a static game. HTML, CSS, JavaScript, and assets only, with index.html at the root.';
+    $('#field-name').placeholder = 'Game name';
+    $('#field-description').placeholder = 'What is this game, and how do you play it?';
+    $('#multiplayer-label').lastChild.textContent = ' Friends can join a live room';
+    $('#create-submit').textContent = 'Create game';
+  }
+  if (!shop && state.user?.role !== 'publisher') {
     $('#owned').innerHTML = '<p class="empty">Studio is limited to publishers in this organization.</p>';
     return;
   }
