@@ -58,6 +58,10 @@ const config = {
   platformMode: platform.mode,
   platform,
   authAdapter: (process.env.AUTH_ADAPTER || 'dev').toLowerCase(),
+  github: {
+    clientId: process.env.OAUTH_GITHUB_CLIENT_ID || '',
+    clientSecret: process.env.OAUTH_GITHUB_CLIENT_SECRET || '',
+  },
   organizationSlug: process.env.ORGANIZATION_SLUG || 'acme',
   organizationName: process.env.ORGANIZATION_NAME || 'Acme',
   oidc: {

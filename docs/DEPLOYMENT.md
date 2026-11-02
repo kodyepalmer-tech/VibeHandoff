@@ -36,6 +36,16 @@ Register this callback on the identity provider:
 ${PORTAL_ORIGIN}/auth/callback
 ```
 
+## Public site
+
+VibeHandoff (`PLATFORM_MODE=public`) signs in with GitHub. Set `AUTH_ADAPTER=oauth`, `OAUTH_GITHUB_CLIENT_ID`, and `OAUTH_GITHUB_CLIENT_SECRET`. The callback registered on the GitHub OAuth App must be exactly:
+
+```
+${PORTAL_ORIGIN}/auth/callback
+```
+
+That is the portal origin plus `/auth/callback`, with no extra path or query. A failed code exchange or user lookup shows a short sign-in error and does not try the corporate OIDC client. New accounts join `ORGANIZATION_SLUG` as members. A role set later is kept on the next sign-in. Local staging can still use `AUTH_ADAPTER=dev` and the seeded identities.
+
 The bucket must stay private. Never put a public-read policy on quarantine or release prefixes.
 
 ## Local staging

@@ -5,7 +5,9 @@ const { Issuer, generators } = require('openid-client');
 const config = require('./config');
 const db = require('./db');
 const audit = require('./audit');
+const logger = require('./logger');
 const { clientIp } = require('./security');
+const github = require('./github-oauth');
 
 let oidcClientPromise;
 
@@ -228,11 +230,93 @@ function requireRole(...roles) {
   };
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function sendGithubFailure(res, err) {
+  const status = err.status || 502;
+  const message =
+    status === 502 ? 'GitHub sign-in failed. Try again.' : err.message || 'GitHub sign-in failed.';
+  logger.error({ err: err.message, status }, 'github sign-in failed');
+  if (res.headersSent) return;
+  res
+    .status(status)
+    .type('html')
+    .send(`<!doctype html><title>Sign-in failed</title><p>${escapeHtml(message)}</p>`);
+}
+
+async function beginGithubLogin(res) {
+  if (!config.github.clientId || !config.github.clientSecret) {
+    throw Object.assign(new Error('GitHub sign-in is not configured.'), { status: 503 });
+  }
+  const state = generators.state();
+  await saveOidcTransaction({
+    state,
+    nonce: 'github',
+    codeVerifier: generators.codeVerifier(),
+  });
+  const redirectUri = github.githubRedirectUri(config.portalOrigin);
+  res.redirect(
+    github.githubAuthorizeUrl({
+      clientId: config.github.clientId,
+      redirectUri,
+      state,
+    })
+  );
+}
+
+async function completeGithubLogin(req, res) {
+  if (req.query.error) {
+    throw Object.assign(new Error('GitHub sign-in was cancelled.'), { status: 400 });
+  }
+  const code = String(req.query.code || '');
+  const state = String(req.query.state || '');
+  if (!code || !state) {
+    throw Object.assign(new Error('GitHub sign-in is missing a code.'), { status: 400 });
+  }
+  const pending = await takeOidcTransaction(state);
+  if (!pending || pending.nonce !== 'github') {
+    throw Object.assign(new Error('GitHub sign-in state is invalid or expired.'), { status: 400 });
+  }
+  const identity = await github.fetchGithubIdentity({
+    code,
+    redirectUri: github.githubRedirectUri(config.portalOrigin),
+    clientId: config.github.clientId,
+    clientSecret: config.github.clientSecret,
+    organization: {
+      slug: config.organizationSlug,
+      name: config.organizationName,
+    },
+  });
+  const user = await upsertUserFromIdentity(identity);
+  setSessionCookie(res, user);
+  await audit.record({
+    organizationId: user.organization_id,
+    userId: user.id,
+    action: 'auth.login',
+    resourceType: 'user',
+    resourceId: user.id,
+    ip: clientIp(req),
+    metadata: { adapter: 'github', email: user.email },
+  });
+  res.redirect('/');
+}
+
 function attachAuthRoutes(app) {
   app.get('/auth/login', async (req, res, next) => {
+    const route = github.selectAuthRoute(config);
     try {
-      if (config.authAdapter === 'dev') {
+      if (route === 'dev') {
         res.redirect('/login');
+        return;
+      }
+      if (route === 'github') {
+        await beginGithubLogin(res);
         return;
       }
       const client = await getOidcClient();
@@ -250,12 +334,21 @@ function attachAuthRoutes(app) {
       });
       res.redirect(url);
     } catch (err) {
+      if (route === 'github') {
+        sendGithubFailure(res, err);
+        return;
+      }
       next(err);
     }
   });
 
   app.get('/auth/callback', async (req, res, next) => {
+    const route = github.selectAuthRoute(config);
     try {
+      if (route === 'github') {
+        await completeGithubLogin(req, res);
+        return;
+      }
       if (config.authAdapter !== 'oidc') {
         res.status(404).json({ error: 'OIDC is not enabled' });
         return;
@@ -287,6 +380,10 @@ function attachAuthRoutes(app) {
       });
       res.redirect('/');
     } catch (err) {
+      if (route === 'github') {
+        sendGithubFailure(res, err);
+        return;
+      }
       next(err);
     }
   });
@@ -392,4 +489,5 @@ module.exports = {
   normalizeRole,
   saveOidcTransaction,
   takeOidcTransaction,
+  selectAuthRoute: github.selectAuthRoute,
 };

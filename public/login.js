@@ -3,6 +3,17 @@ const { api, applyBrand } = window.VibeHandoff;
 async function boot() {
   applyBrand();
   try {
+    const platform = await api('/api/platform');
+    if (platform.mode === 'public' && platform.auth === 'oauth') {
+      const link = document.querySelector('#panel a.button');
+      if (link) link.textContent = 'Continue with GitHub';
+      const lede = document.querySelector('.lede');
+      if (lede) lede.textContent = 'Sign in with GitHub.';
+    }
+  } catch {
+    // Keep the baked enterprise copy when the platform route is down.
+  }
+  try {
     await api('/api/me');
     location.href = '/';
     return;
