@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cubesat</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #071018; color: #e8f1f8; font-family: "Segoe UI", sans-serif; }
+      body { display: grid; grid-template-columns: 1.4fr 0.8fr; min-height: 100%; }
+      h1 { margin: 0; font-size: 1.4rem; }
+      #stage { position: relative; min-height: 100%; }
+      canvas { width: 100%; height: 100%; display: block; }
+      #end {
+        position: absolute; left: 16px; bottom: 16px; margin: 0;
+        background: #f4c542; color: #102033; padding: 10px 14px; border-radius: 8px; font-weight: 700;
+      }
+      aside { padding: 16px 18px 20px; display: grid; align-content: start; gap: 12px; background: #102033; }
+      .readout { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .readout div { background: #071018; border-radius: 8px; padding: 8px 10px; }
+      .readout b { display: block; font-size: 1.15rem; }
+      .modes, .toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+      button, label {
+        background: #1b3a57; color: inherit; border: 1px solid #2a475e; border-radius: 8px; padding: 8px 10px;
+      }
+      button.active { background: #66c0f4; color: #071018; }
+      #log { margin: 0; padding-left: 18px; color: #9eb4c8; }
+      #phase { color: #f4c542; }
+      @media (max-width: 800px) { body { grid-template-columns: 1fr; } #stage { min-height: 52vh; } }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="orbit"></canvas>
+      <p id="end" hidden></p>
+    </div>
+    <aside>
+      <header>
+        <h1>Cubesat</h1>
+        <p id="phase">Sunlight</p>
+      </header>
+      <div class="readout">
+        <div>Battery<b id="battery">84%</b></div>
+        <div>Arrays<b id="power">arrays lit</b></div>
+        <div>Aboard<b id="aboard">1 / 3</b></div>
+        <div>Downlinked<b id="down">0 / 3</b></div>
+      </div>
+      <div class="modes">
+        <button type="button" data-mode="sun">Sun point</button>
+        <button type="button" data-mode="nadir">Nadir</button>
+        <button type="button" data-mode="antenna">Antenna</button>
+      </div>
+      <div class="toggles">
+        <label><input id="camera" type="checkbox" /> Payload</label>
+        <label><input id="radio" type="checkbox" /> Radio</label>
+      </div>
+      <p>Point the antenna and key the radio during the yellow pass. Nadir plus payload stores another image in sunlight. The radio is hungry in eclipse.</p>
+      <ol id="log"></ol>
+    </aside>
+    <script src="mission.js"></script>
+  </body>
+</html>

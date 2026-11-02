@@ -96,6 +96,14 @@ async function seed() {
       version: '1.0.0',
       files: readApp('sandbox'),
     },
+    {
+      name: 'Cubesat',
+      slug: 'cubesat',
+      description: 'Fly a cubesat through sunlight, eclipse, and a ground pass. Point the antenna, spend the battery, and downlink the images.',
+      tags: ['game', 'simulation'],
+      version: '1.0.0',
+      files: readApp('cubesat'),
+    },
   ];
 
   for (const spec of apps) {

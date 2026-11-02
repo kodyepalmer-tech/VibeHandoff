@@ -84,4 +84,14 @@ test('the public shop signs in without company role cards', async (t) => {
   await page.getByRole('button', { name: 'Invite friends' }).waitFor();
   await page.getByRole('button', { name: 'Join live' }).waitFor();
   await page.getByRole('link', { name: 'Play solo' }).waitFor();
+
+  await page.goto('http://127.0.0.1:13000/apps/cubesat');
+  await page.getByText(/Fly a cubesat/).waitFor();
+  await page.getByRole('link', { name: 'Play solo' }).click();
+  await page.waitForURL(/\/apps\/cubesat\/launch/);
+  const sat = page.frameLocator('#frame');
+  await sat.getByRole('heading', { name: 'Cubesat' }).waitFor({ timeout: 10_000 });
+  await sat.getByRole('button', { name: 'Antenna' }).click();
+  await sat.locator('#radio').check();
+  await sat.getByText(/Ground station received/).waitFor({ timeout: 15_000 });
 });
