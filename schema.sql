@@ -213,6 +213,37 @@ CREATE TABLE reviews (
 
 CREATE INDEX reviews_application_idx ON reviews (application_id, created_at DESC);
 
+-- Public shop: who you follow, what you want to play, and what you shared.
+-- Enterprise keeps the tables and does not open the social routes.
+CREATE TABLE follows (
+  follower_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  followed_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (follower_id, followed_id),
+  CHECK (follower_id <> followed_id)
+);
+
+CREATE INDEX follows_followed_idx ON follows (followed_id);
+
+CREATE TABLE wishlists (
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  application_id UUID NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, application_id)
+);
+
+CREATE TABLE share_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  application_id UUID REFERENCES applications(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('game', 'review', 'moment', 'playing')),
+  note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (char_length(note) <= 280)
+);
+
+CREATE INDEX share_events_created_idx ON share_events (created_at DESC);
+
 -- Scores are per player. Enterprise reads stay inside the organization.
 -- A public deployment reads every score stored for that app.
 CREATE TABLE leaderboard_entries (

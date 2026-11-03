@@ -49,6 +49,15 @@ test('a second identity can discover and launch another creator release', async 
   assert.equal(artifact.headers['content-security-policy'].includes('http://127.0.0.1:13000'), true);
 });
 
+test('the company shelf has no social feed', async () => {
+  const jordan = await harness.login('jordan@acme.example');
+  const feed = await jordan.get('/api/community');
+  assert.equal(feed.status, 404);
+  assert.equal(feed.body.error, 'The company shelf does not have a social feed.');
+  const wish = await jordan.post('/api/apps/orbit-sketch/wishlist').send({});
+  assert.equal(wish.status, 404);
+});
+
 test('members cannot publish and artifacts stay private without a ticket', async () => {
   const jordan = await harness.login('jordan@acme.example');
   const created = await jordan.post('/api/apps').send({ name: 'Secret Lab', slug: 'secret-lab' });

@@ -293,6 +293,11 @@ th, td {
 .comment { padding-top: 8px; border-top: 1px solid var(--rule); }
 .posted { font-size: 1.05rem; }
 
+.shelves { display: grid; gap: 22px; margin: 8px 0 28px; }
+.shelf h2 { font-size: 1.15rem; }
+.shelf-row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; }
+.mini { min-width: 220px; min-height: 0; }
+
 body.shop {
   --ink: #e8f1f8;
   --paper: #0e141b;

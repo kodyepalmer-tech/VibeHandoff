@@ -53,6 +53,55 @@ async function refresh(shop) {
     : `<p class="empty">${shop ? 'No games on the shelf yet.' : 'No published apps match this shelf yet.'}</p>`;
 }
 
+function shelf(title, cards, empty) {
+  return `
+    <section class="shelf">
+      <h2>${title}</h2>
+      ${cards.length ? `<div class="shelf-row">${cards}</div>` : `<p class="meta">${empty}</p>`}
+    </section>
+  `;
+}
+
+function mini(item, extra) {
+  return `
+    <a class="card mini" href="/apps/${encodeURIComponent(item.slug)}">
+      <h3>${escapeHtml(item.name)}</h3>
+      <p class="meta">${escapeHtml(extra)}</p>
+    </a>
+  `;
+}
+
+async function renderShelves() {
+  const data = await api('/api/community');
+  const root = $('#shelves');
+  root.className = 'shelves';
+  const friends = (data.friendsPlaying || []).map((item) =>
+    mini({ ...item, name: item.name }, `${item.display_name} is playing`)
+  );
+  const fresh = (data.fresh || []).map((item) => mini(item, `Posted by ${item.creator_name}`));
+  const heating = (data.heating || []).map((item) =>
+    mini(item, `${item.plays} plays this week · 2× a typical game`)
+  );
+  const library = (data.library || []).map((item) => mini(item, 'Jump back in'));
+  const saved = (data.wishlist || []).map((item) => mini(item, `Posted by ${item.creator_name}`));
+  const floor = (data.activity || [])
+    .map(
+      (item) => `
+      <a class="card mini" href="/apps/${encodeURIComponent(item.slug || '')}">
+        <h3>${escapeHtml(item.app_name || 'VibeHandoff')}</h3>
+        <p class="meta">${escapeHtml(item.display_name)} · ${escapeHtml(item.note || item.kind)}</p>
+      </a>`
+    );
+  root.innerHTML = [
+    shelf('Jump back in', library, 'Play something once and it stays here.'),
+    shelf('Friends are playing', friends, 'Follow a creator from their game page.'),
+    shelf('New on the shelf', fresh, 'Nothing new yet.'),
+    shelf('Picked up', heating, 'A game shows up here when people play it at least twice as often as a typical game this week.'),
+    shelf('Wishlist', saved, 'Save a game from its page.'),
+    shelf('People are sharing', floor, 'A comment or a short moment shows up here.'),
+  ].join('');
+}
+
 async function boot() {
   await loadSession();
   const platform = await renderChrome('market');
@@ -63,8 +112,9 @@ async function boot() {
     $('#hero-kicker').textContent = 'The public shelf';
     $('#hero-title').textContent = 'Play what people posted.';
     $('#hero-lede').textContent =
-      'A game shop. Read the description and who posted it, leave a comment, then play solo, join a live room, or invite someone in.';
+      'Friends pull you in, a new release gives you a reason to come back, and a game that people keep opening gets passed around.';
     $('#q').placeholder = 'Search games';
+    await renderShelves();
   }
   const [metrics, tags] = await Promise.all([api('/api/metrics'), api('/api/tags')]);
   const counts = metrics.metrics;
