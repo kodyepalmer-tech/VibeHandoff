@@ -24,6 +24,7 @@ test('two startups apply each migration once', async () => {
       '003_live_rooms.sql',
       '004_platform_modes.sql',
       '005_export_approvals.sql',
+      '006_shop_network.sql',
     ]
   );
   const apps = await pool.query(
@@ -33,7 +34,7 @@ test('two startups apply each migration once', async () => {
 
   await db.migrate();
   const again = await pool.query('SELECT count(*)::int AS n FROM schema_migrations');
-  assert.equal(again.rows[0].n, 5);
+  assert.equal(again.rows[0].n, 6);
   const view = await pool.query(
     `SELECT 1 FROM information_schema.views
      WHERE table_schema = 'public' AND table_name = 'export_approvals'`
@@ -52,7 +53,8 @@ test('two startups apply each migration once', async () => {
        WHERE table_schema = 'vibe_schema_check'
          AND table_name IN (
            'users', 'reviews', 'leaderboard_entries', 'organization_quotas',
-           'audit_logs', 'application_memberships', 'asset_export_requests', 'user_save_states'
+           'audit_logs', 'application_memberships', 'asset_export_requests', 'user_save_states',
+           'follows', 'wishlists', 'share_events'
          )
        ORDER BY table_name`
     );
@@ -62,11 +64,14 @@ test('two startups apply each migration once', async () => {
         'application_memberships',
         'asset_export_requests',
         'audit_logs',
+        'follows',
         'leaderboard_entries',
         'organization_quotas',
         'reviews',
+        'share_events',
         'user_save_states',
         'users',
+        'wishlists',
       ]
     );
   } finally {

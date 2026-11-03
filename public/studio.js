@@ -59,14 +59,28 @@ async function boot() {
   const platform = await renderChrome('studio');
   shop = platform?.mode === 'public';
   $('#logout').addEventListener('click', logout);
+  const kinds = document.getElementById('kind-row');
   if (shop) {
     document.title = 'Upload · VibeHandoff';
     $('#studio-title').textContent = 'Upload a game';
     $('#studio-lede').textContent = 'Post a static game. HTML, CSS, JavaScript, and assets only, with index.html at the root.';
     $('#field-name').placeholder = 'Game name';
     $('#field-description').placeholder = 'What is this game, and how do you play it?';
+    $('#field-tags').placeholder = 'tags, comma separated';
     $('#multiplayer-label').lastChild.textContent = ' Friends can join a live room';
     $('#create-submit').textContent = 'Create game';
+    if (kinds) kinds.hidden = true;
+  } else if (kinds) {
+    for (const kind of ['Shortcut', 'Tool', 'App']) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ghost';
+      button.textContent = kind;
+      button.addEventListener('click', () => {
+        $('#field-tags').value = kind.toLowerCase();
+      });
+      kinds.append(button);
+    }
   }
   if (!shop && state.user?.role !== 'publisher') {
     $('#owned').innerHTML = '<p class="empty">Studio is limited to publishers in this organization.</p>';

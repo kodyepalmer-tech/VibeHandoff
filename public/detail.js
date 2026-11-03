@@ -76,9 +76,14 @@ async function renderShop(app, slug, launchHref) {
       <div class="tags">${(app.tags || []).map((tag) => `<span class="tag">${escapeHtml(tag.name)}</span>`).join('')}${app.multiplayer ? '<span class="tag">Live</span>' : '<span class="tag">Solo</span>'}</div>
       <h1>${escapeHtml(app.name)}</h1>
       <p class="lede">${escapeHtml(app.description || 'No description yet.')}</p>
-      <p class="posted">Posted by ${escapeHtml(app.creator_name)}</p>
-      <p class="meta">Version ${escapeHtml(app.version)} · ${app.launch_count} plays</p>
+      <p class="posted">Posted by <span id="posted-by">${escapeHtml(app.creator_name)}</span></p>
+      <p class="meta" id="signal">Version ${escapeHtml(app.version)} · ${app.launch_count} plays</p>
+      <div class="play-actions" id="social-actions"></div>
       ${live}
+      <form id="moment-form" class="stack">
+        <textarea name="note" maxlength="280" placeholder="Share a moment. A line people can pass on."></textarea>
+        <button type="submit" class="ghost">Post moment</button>
+      </form>
       <p class="error" id="play-error" hidden></p>
     </article>
     <section class="panel stack" id="comments">
@@ -101,6 +106,7 @@ async function renderShop(app, slug, launchHref) {
     </section>
   `;
   await loadComments(slug);
+  await loadSocial(app, slug);
   $('#comment-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = new FormData(event.target);
@@ -118,6 +124,81 @@ async function renderShop(app, slug, launchHref) {
     }
   });
   if (app.multiplayer) wireRooms(app, launchHref, { invite: true });
+}
+
+async function copyText(value, button) {
+  try {
+    await navigator.clipboard.writeText(value);
+    const previous = button.textContent;
+    button.textContent = 'Copied';
+    setTimeout(() => {
+      button.textContent = previous;
+    }, 1200);
+  } catch {
+    button.textContent = 'Copy the link from the address bar';
+  }
+}
+
+async function loadSocial(app, slug) {
+  const social = await api(`/api/apps/${encodeURIComponent(slug)}/social`);
+  const actions = $('#social-actions');
+  const mine = window.VibeHandoff.state.user?.id === social.creatorId;
+  const followLabel = social.followingCreator ? 'Following' : `Follow ${social.creatorName}`;
+  actions.innerHTML = `
+    <button type="button" id="wish">${social.wishlisted ? 'Wishlisted' : 'Wishlist'}</button>
+    <button type="button" class="ghost" id="share-game">Share</button>
+    ${mine ? '' : `<button type="button" class="ghost" id="follow">${escapeHtml(followLabel)}</button>`}
+  `;
+  if (social.heating) {
+    $('#signal').textContent = `${social.weeklyPlays} plays this week · people are playing this at least twice as often as a typical game`;
+  }
+  if (social.friends.length) {
+    const line = document.createElement('p');
+    line.className = 'meta';
+    line.textContent = `Friends playing: ${social.friends.join(', ')}`;
+    actions.after(line);
+  }
+  $('#wish').addEventListener('click', async () => {
+    if ($('#wish').textContent === 'Wishlisted') {
+      await api(`/api/apps/${encodeURIComponent(slug)}/wishlist`, { method: 'DELETE' });
+      $('#wish').textContent = 'Wishlist';
+      return;
+    }
+    await api(`/api/apps/${encodeURIComponent(slug)}/wishlist`, { method: 'POST', body: {} });
+    $('#wish').textContent = 'Wishlisted';
+  });
+  $('#share-game').addEventListener('click', async (event) => {
+    const shared = await api('/api/shares', { method: 'POST', body: { slug, kind: 'game' } });
+    await copyText(shared.text, event.currentTarget);
+  });
+  const follow = $('#follow');
+  if (follow) {
+    follow.addEventListener('click', async () => {
+      if (follow.textContent === 'Following') {
+        await api(`/api/follows/${encodeURIComponent(social.creatorId)}`, { method: 'DELETE' });
+        follow.textContent = `Follow ${social.creatorName}`;
+        return;
+      }
+      await api('/api/follows', { method: 'POST', body: { userId: social.creatorId } });
+      follow.textContent = 'Following';
+    });
+  }
+  $('#moment-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const note = new FormData(event.target).get('note');
+    const existing = $('#play-error');
+    existing.hidden = true;
+    try {
+      const shared = await api('/api/shares', { method: 'POST', body: { slug, kind: 'moment', note } });
+      event.target.reset();
+      existing.hidden = false;
+      existing.textContent = 'Moment posted. Copy it from Share if you want to pass it on.';
+      await copyText(shared.text, $('#share-game'));
+    } catch (err) {
+      existing.hidden = false;
+      existing.textContent = err.message;
+    }
+  });
 }
 
 async function loadComments(slug) {

@@ -8,6 +8,7 @@ const queries = require('./queries');
 const publish = require('./publish');
 const { clientIp } = require('./security');
 const { buildExportArchive } = require('./export-download');
+const community = require('./community');
 
 const SAVE_KEY = /^[A-Za-z0-9_.:-]{1,64}$/;
 const HANDLE = /^[a-z0-9_]{3,24}$/;
@@ -291,6 +292,83 @@ function mountPlatform(app) {
     app.get('/api/apps/:slug/reviews', reviewsOff);
     app.post('/api/apps/:slug/reviews', reviewsOff);
     app.patch('/api/me/profile', reject('Public profiles are part of the public store.'));
+  }
+
+  if (profile.mode === 'public') {
+    app.get('/api/community', auth.requireAuth, async (req, res, next) => {
+      try {
+        res.json(await community.home(req.user.id));
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.get('/api/apps/:slug/social', auth.requireAuth, async (req, res, next) => {
+      try {
+        const social = await community.gameSocial(req.user.id, req.params.slug);
+        if (!social) throw httpError(404, 'Application not found');
+        res.json(social);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.post('/api/follows', auth.requireAuth, async (req, res, next) => {
+      try {
+        const person = await community.follow(req.user.id, String(req.body?.userId || ''));
+        res.status(201).json({ following: person });
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.delete('/api/follows/:userId', auth.requireAuth, async (req, res, next) => {
+      try {
+        await community.unfollow(req.user.id, req.params.userId);
+        res.json({ ok: true });
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.post('/api/apps/:slug/wishlist', auth.requireAuth, async (req, res, next) => {
+      try {
+        res.status(201).json({ wishlist: await community.saveWish(req.user.id, req.params.slug) });
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.delete('/api/apps/:slug/wishlist', auth.requireAuth, async (req, res, next) => {
+      try {
+        await community.dropWish(req.user.id, req.params.slug);
+        res.json({ ok: true });
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.post('/api/shares', auth.requireAuth, async (req, res, next) => {
+      try {
+        const shared = await community.share(req.user.id, {
+          slug: String(req.body?.slug || ''),
+          kind: String(req.body?.kind || ''),
+          note: req.body?.note,
+        });
+        res.status(201).json(shared);
+      } catch (err) {
+        next(err);
+      }
+    });
+  } else {
+    const socialOff = reject('The company shelf does not have a social feed.');
+    app.get('/api/community', socialOff);
+    app.get('/api/apps/:slug/social', socialOff);
+    app.post('/api/follows', socialOff);
+    app.delete('/api/follows/:userId', socialOff);
+    app.post('/api/apps/:slug/wishlist', socialOff);
+    app.delete('/api/apps/:slug/wishlist', socialOff);
+    app.post('/api/shares', socialOff);
   }
 
   app.get('/api/apps/:slug/export/download', auth.requireAuth, async (req, res, next) => {
